@@ -5,6 +5,11 @@
 This repository uses the AWS Price List API to implement price calculation utilities.
 
 
+Visit this URL for more details:
+
+https://www.concurrencylabs.com/blog/aws-pricing-lambda-realtime-calculation-function/
+
+
 The code is structured in the following way:
 
 **pricecalculator**. The modules in this package interact directly with the AWS Price List API.
@@ -131,9 +136,6 @@ Then run:
 ```
 python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:us-east-1:123456789012:function:realtime-pricing-ec2-calculate
 ```
-
-
-
 
 
 ### Updating the AWS Price List API Index file

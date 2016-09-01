@@ -30,6 +30,8 @@ package:
     - bin
     - lib
     - .git    
+    - include
+    - pip-selfcheck.json
 #  artifact: my-service-code.zip
 
 functions:
