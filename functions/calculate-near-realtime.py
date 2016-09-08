@@ -77,6 +77,7 @@ def handler(event, context):
 
     #Get ELB(s) with the tags we're looking for.
     elbnames = find_elbs(tagkey, tagvalue)
+    elb_hours = 0
     if elbnames:
         log.info("Found ELBs:{}".format(elbnames))
         elb_hours = len(elbnames)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
