@@ -75,40 +75,43 @@ def handler(event, context):
 
     start, end = calculate_time_range()
 
-    #Get ELB(s) with the tags we're looking for.
-    elbnames = find_elbs(tagkey, tagvalue)
     elb_hours = 0
-    if elbnames:
-        log.info("Found ELBs:{}".format(elbnames))
-        elb_hours = len(elbnames)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
+    elb_data_processed_gb = 0
+    elb_instances = {}
 
-    #Get all instances registered to each of the found ELBs
-    elb_instances = get_elb_instances(elbnames)
-    if elb_instances:
-      log.info("Found ELB-registered EC2 instances:{}".format(elb_instances.keys()))
+    #Get tagged ELB(s)
+    taggedelbs = find_elbs(tagkey, tagvalue)
+    if taggedelbs:
+        log.info("Found tagged ELBs:{}".format(taggedelbs))
+        elb_hours = len(taggedelbs)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
+        elb_instances = get_elb_instances(taggedelbs)
+        #Get all EC2 instances registered with each tagged ELB, so we can calculate ELB data processed
+        if elb_instances:
+          log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
+          elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+        else:
+          log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
     else:
-      log.info("Didn't find any ELB-registered EC2 instances")
+        log.info("No tagged ELBs found")
 
-    elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
-
-    #Get EC2 instances with the tag
-    non_elb_instances = get_non_elb_instances_by_tag(tagkey, tagvalue, elb_instances)
-    if non_elb_instances:
-        log.info("Non ELB-registered EC2 instances:{}".format(non_elb_instances.keys()))
+    #Get tagged EC2 instances
+    ec2_instances = get_ec2_instances_by_tag(tagkey, tagvalue)
+    if ec2_instances:
+        log.info("Tagged EC2 instances:{}".format(ec2_instances.keys()))
     else:
-        log.info("Didn't find any standalone EC2 instances")
-
+        log.info("Didn't find any tagged EC2 instances")
 
     #Calculate ELB cost
-    elb_cost = ec2pricing.calculate(region=region, elbHours=elb_hours, elbDataProcessedGb=elb_data_processed_gb)
-    if 'pricingRecords' in elb_cost: pricing_records.extend(elb_cost['pricingRecords'])
-    totalCost = totalCost + elb_cost['totalCost']
+    if elb_hours:
+        elb_cost = ec2pricing.calculate(region=region, elbHours=elb_hours, elbDataProcessedGb=elb_data_processed_gb)
+        if 'pricingRecords' in elb_cost:
+            pricing_records.extend(elb_cost['pricingRecords'])
+            totalCost = totalCost + elb_cost['totalCost']
 
 
     #Calculate EC2 compute time for ALL instance types found (subscribed to ELB or not) - group by instance types
     all_instance_dict = {}
-    all_instance_dict.update(elb_instances)
-    all_instance_dict.update(non_elb_instances)
+    all_instance_dict.update(ec2_instances)
     all_instance_types = get_instance_type_count(all_instance_dict)
     log.info("All instance types:{}".format(all_instance_types))
 
@@ -205,7 +208,6 @@ def get_elb_instances(elbnames):
               for i in instances:
                   instance_ids.append(i['InstanceId'])
 
-    #print("Looking for the following ELB instances:["+str(instance_ids)+"]")
     if instance_ids:
         response = ec2client.describe_instances(InstanceIds=instance_ids)
         if 'Reservations' in response:
@@ -215,6 +217,21 @@ def get_elb_instances(elbnames):
                         result[i['InstanceId']]=i
 
     return result
+
+
+def get_ec2_instances_by_tag(tagkey, tagvalue):
+    result = {}
+    response = ec2client.describe_instances(Filters=[{'Name': 'tag:'+tagkey, 'Values':[tagvalue]}])
+    if 'Reservations' in response:
+        reservations = response['Reservations']
+        for r in reservations:
+            if 'Instances' in r:
+                for i in r['Instances']:
+                    result[i['InstanceId']]=i
+
+    return result
+
+
 
 
 def get_non_elb_instances_by_tag(tagkey, tagvalue, elb_instances):

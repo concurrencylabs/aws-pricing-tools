@@ -27,7 +27,57 @@ projects usage into a longer time period (i.e. a month), calls pricecalculator t
 and puts results in CloudWatch metrics.
 
 
-## Set up
+**Rules:**
+* The function only considers for price calculation those resources that are tagged. For example, if there is an untagged ELB
+with tagged EC2 instances, the function will only consider the EC2 instances for the calculation.
+If there is a tagged ELB with untagged EC2 instances, the function will only calculate price
+for the ELB. 
+* The behavior described above is intended for simplicity, otherwise the function would have to
+cover a number of combinations that might or might not be suitable to all users of the function. 
+* To keep it simple, if you want a resource to be included in the calculation, then tag it. Otherwise
+leave it untagged.
+
+
+
+## Install - using CloudFormation (recommended)
+
+
+I created a CloudFormation template that deploys the Lambda function, as well as the CloudWatch Events
+schedule. All you have to do is specify the tag key and value you want to calculate pricing for.
+For example: TagKey:stack, TagValue:mywebapp
+
+Click here to get started:
+
+<a href="https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=near-realtime-pricing-calculator&templateURL=http://s3.amazonaws.com/concurrencylabs-cfn-templates/lambda-near-realtime-pricing/function-plus-schedule.json" target="new"><img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png" alt="Launch Stack"></a> 
+
+
+### Updating to the latest version using CloudFormation
+
+This function will be updated regularly in order to fix bugs and also to add more functionality.
+This means you will likely have to update the function at some point. I recommend installing
+the function using the CloudFormation template, since it will simplify the update process.
+
+To update the function, just go to the CloudFormation console, select the stack you've created
+and click on Actions -> Update Stack:
+
+![Update CF stack](https://www.concurrencylabs.com/img/posts/11-ec2-pricing-lambda/update-stack.png)
+
+
+Then select "Specify an Amazon S3 template URL" and enter the following value:
+
+
+```
+http://concurrencylabs-cfn-templates.s3.amazonaws.com/lambda-near-realtime-pricing/function-plus-schedule.json
+```
+
+![Select template](https://www.concurrencylabs.com/img/posts/11-ec2-pricing-lambda/update-function-select-template.png)
+
+And that's it. CloudFormation will update the function with the latest code.
+
+
+
+## Install - Manual steps
+
 
 
 ### Create an isolated Python environment using virtualenv
