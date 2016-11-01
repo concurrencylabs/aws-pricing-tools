@@ -188,12 +188,13 @@ def find_elbs(tagkey, tagvalue):
         for e in elbs['LoadBalancerDescriptions']:
             all_elb_names.append(e['LoadBalancerName'])
 
-    tag_desc = elbclient.describe_tags(LoadBalancerNames=all_elb_names)
-    for tg in tag_desc['TagDescriptions']:
-        tags = tg['Tags']
-        for t in tags:
-            if t['Key']==tagkey and t['Value']==tagvalue:
-                result.append(tg['LoadBalancerName'])
+        if all_elb_names:
+            tag_desc = elbclient.describe_tags(LoadBalancerNames=all_elb_names)
+            for tg in tag_desc['TagDescriptions']:
+                tags = tg['Tags']
+                for t in tags:
+                    if t['Key']==tagkey and t['Value']==tagvalue:
+                        result.append(tg['LoadBalancerName'])
     return result
 
 
