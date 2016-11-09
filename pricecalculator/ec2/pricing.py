@@ -156,7 +156,7 @@ def calculate(**kwargs):
         pricing_records.append(vars(pricing_record))
 
   pricing_result = PricingResult(awsPriceListApiVersion, region, cost, pricing_records)
-  log.info(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
+  log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
   return pricing_result.__dict__
 
 

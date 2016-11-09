@@ -7,6 +7,7 @@ DEFAULT_CURRENCY = "USD"
 SERVICE_CODE_AWS_DATA_TRANSFER = 'AWSDataTransfer'
 
 REGION_MAP = {'us-east-1':'US East (N. Virginia)',
+              'us-east-2':'US East (Ohio)',
               'us-west-1':'US West (N. California)',
               'us-west-2':'US West (Oregon)',
               'eu-west-1':'EU (Ireland)',
@@ -19,14 +20,35 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ap-south-1':'Asia Pacific (Mumbai)'
               }
 
+REGION_REPORT_MAP = {'us-east-1':'N. Virginia)',
+              'us-east-2':'Ohio)',
+              'us-west-1':'N. California)',
+              'us-west-2':'Oregon)',
+              'eu-west-1':'Ireland)',
+              'eu-central-1':'Frankfurt)',
+              'ap-northeast-1':'Tokyo)',
+              'ap-northeast-2':'Asia Pacific (Seoul)',
+              'ap-southeast-1':'Asia Pacific (Singapore)',
+              'ap-southeast-2':'Asia Pacific (Sydney)',
+              'sa-east-1':'South America (Sao Paulo)',
+              'ap-south-1':'Asia Pacific (Mumbai)'
+              }
+
+
+
+
+
+
+
 SERVICE_EC2 = 'ec2'
 SERVICE_ELB = 'elb'
 SERVICE_EBS = 'ebs'
 SERVICE_S3 = 's3'
+SERVICE_RDS = 'rds'
 
-SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2)
+SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS)
 
-SUPPORTED_REGIONS = ('us-east-1', 'us-west-1', 'us-west-2', 'eu-west-1', 'eu-central-1',
+SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2', 'eu-west-1', 'eu-central-1',
                      'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1')
 
@@ -42,10 +64,12 @@ SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , '
                             'd2.2xlarge' , 'd2.4xlarge' , 'd2.8xlarge')
 
 
+
 SERVICE_INDEX_MAP = {'s3':'AmazonS3','ec2':'AmazonEC2'}
 
 
 PRODUCT_FAMILY_COMPUTE_INSTANCE = 'Compute Instance'
+PRODUCT_FAMILY_DATABASE_INSTANCE = 'Database Instance'
 PRODUCT_FAMILY_DATA_TRANSFER = 'Data Transfer'
 PRODUCT_FAMILY_FEE = 'Fee'
 PRODUCT_FAMILY_API_REQUEST = 'API Request'
@@ -127,6 +151,80 @@ EBS_VOLUME_TYPES_MAP = {
                        }
 
 
+#_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+
+#RDS
+
+SUPPORTED_RDS_INSTANCE_CLASSES =('db.t2.micro','db.t2.small','db.t2.medium','db.t2.large', 'db.r3.large', 'db.r3.xlarge',
+                               'db.r3.2xlarge', 'db.r3.4xlarge','db.r3.8xlarge','db.m4.large','db.m4.xlarge','db.m4.2xlarge',
+                               'db.m4.4xlarge','db.m4.10xlarge')
+
+
+RDS_DEPLOYMENT_OPTION_SINGLE_AZ = 'Single-AZ'
+RDS_DEPLOYMENT_OPTION_MULTI_AZ = 'Multi-AZ'
+
+RDS_DB_ENGINE_MYSQL = 'MySQL'
+RDS_DB_ENGINE_MARIADB = 'MariaDB'
+RDS_DB_ENGINE_ORACLE = 'Oracle'
+RDS_DB_ENGINE_SQL_SERVER = 'SQL Server'
+RDS_DB_ENGINE_POSTGRESQL = 'PostgreSQL'
+RDS_DB_ENGINE_AURORA = 'Amazon Aurora'
+
+RDS_DB_EDITION_ENTERPRISE = 'Enterprise'
+RDS_DB_EDITION_STANDARD = 'Standard'
+RDS_DB_EDITION_STANDARD_ONE = 'Standard One'
+RDS_DB_EDITION_STANDARD_TWO = 'Standard Two'
+RDS_DB_EDITION_EXPRESS = 'Express'
+RDS_DB_EDITION_WEB = 'Web'
+
+
+SCRIPT_RDS_DATABASE_ENGINE_MYSQL = 'mysql'
+SCRIPT_RDS_DATABASE_ENGINE_MARIADB = 'mariadb'
+SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD = 'oracle-se'
+SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE = 'oracle-se1'
+SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO = 'oracle-se2'
+SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE = 'oracle-ee'
+SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE = 'sqlserver-ee'
+SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD = 'sqlserver-se'
+SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS = 'sqlserver-ex'
+SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB = 'sqlserver-web'
+SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL = 'postgres'
+SCRIPT_RDS_DATABASE_ENGINE_AURORA = 'aurora'
+
+
+SCRIPT_RDS_LICENSE_MODEL_INCLUDED = 'license-included'
+SCRIPT_RDS_LICENSE_MODEL_BYOL = 'bring-your-own-license'
+SCRIPT_RDS_LICENSE_MODEL_PUBLIC = 'general-public-license'
+RDS_SUPPORTED_LICENSE_MODELS = (SCRIPT_RDS_LICENSE_MODEL_INCLUDED, SCRIPT_RDS_LICENSE_MODEL_BYOL, SCRIPT_RDS_LICENSE_MODEL_PUBLIC)
+RDS_LICENSE_MODEL_MAP = {SCRIPT_RDS_LICENSE_MODEL_INCLUDED:'License included',
+                         SCRIPT_RDS_LICENSE_MODEL_BYOL:'Bring your own license',
+                         SCRIPT_RDS_LICENSE_MODEL_PUBLIC:'No license required'}
+
+
+
+
+
+RDS_SUPPORTED_DB_ENGINES = (SCRIPT_RDS_DATABASE_ENGINE_MYSQL,SCRIPT_RDS_DATABASE_ENGINE_MARIADB,
+                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD, SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE,
+                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO,SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE,
+                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD,
+                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB,
+                            SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, SCRIPT_RDS_DATABASE_ENGINE_AURORA
+                            )
+
+RDS_ENGINE_MAP = {SCRIPT_RDS_DATABASE_ENGINE_MYSQL:{'engine':RDS_DB_ENGINE_MYSQL,'edition':''},
+                  SCRIPT_RDS_DATABASE_ENGINE_MARIADB:{'engine':RDS_DB_ENGINE_MARIADB ,'edition':''},
+                  SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD:{'engine':RDS_DB_ENGINE_ORACLE ,'edition':RDS_DB_EDITION_STANDARD},
+                  SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE:{'engine':RDS_DB_ENGINE_ORACLE ,'edition':RDS_DB_EDITION_STANDARD_ONE},
+                  SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO:{'engine':RDS_DB_ENGINE_ORACLE ,'edition':RDS_DB_EDITION_STANDARD_TWO},
+                  SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE:{'engine':RDS_DB_ENGINE_ORACLE ,'edition':RDS_DB_EDITION_ENTERPRISE},
+                  SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_ENTERPRISE},
+                  SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_STANDARD},
+                  SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_EXPRESS},
+                  SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_WEB},
+                  SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL:{'engine':RDS_DB_ENGINE_POSTGRESQL ,'edition':''},
+                  SCRIPT_RDS_DATABASE_ENGINE_AURORA:{'engine':RDS_DB_ENGINE_AURORA ,'edition':''}
+                  }
 
 
 

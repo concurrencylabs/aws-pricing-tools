@@ -50,7 +50,13 @@
                                    "elasticloadbalancing:Describe*",
                                    "autoscaling:Describe*"],
                         "Resource": "*"
-                    }                    
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["rds:Describe*",
+                                   "rds:List*"],
+                        "Resource": "*"
+                    }                                                            
                     ]
                   }
                 }]
@@ -65,11 +71,11 @@
 		    "Role": { "Fn::GetAtt" : ["LambdaRealtimeCalculatePricingRole", "Arn"] },
 		    "Code": {
 		      "S3Bucket": "concurrencylabs-cfn-templates",
-		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v1.1.zip"
+		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v1.2.zip"
 		    },
 		    "Runtime": "python2.7",
 		    "Timeout": "300",
-		    "MemorySize" : 512
+		    "MemorySize" : 1024
 		  }
 		},
 
@@ -105,7 +111,7 @@
 
 		"Documentation": {
 			"Description": "For more details, see this blog post",
-			"Value": "https://www.concurrencylabs.com/blog/aws-lambda-near-realtime-pricing-calculation-function/"
+			"Value": "https://www.concurrencylabs.com/blog/aws-pricing-lambda-realtime-calculation-function/"
 		},
 
 

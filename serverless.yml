@@ -21,28 +21,32 @@ provider:
 #defaults:
 #  stage: dev
 #  region: us-east-1
-
 # you can add packaging information here
+
 package:
-#  include:
-#    - include-me.js
   exclude:
-    - bin
-    - lib
-    - .git    
-    - include
+    - bin/*
+    - lib/**
+    - .git/**
+    - include/**
     - pip-selfcheck.json
-#  artifact: my-service-code.zip
+    - pricecalculator/s3
+    - pricecalculator/ec2/index.csv
+    - pricecalculator/rds/index.csv
+    - scripts/**
+    - test-events/**
+    - cloudformation/**
+    - readme.txt
 
 functions:
   nearrealtimepricing:
     handler: functions/calculate-near-realtime.handler
     name: calculate-near-realtime-pricing
     timeout: 300
-    memory: 512
+    memory: 1024
 
 
-#   NOTE: I decided not to use this feature, since Serverless doesn't support 
+#   NOTE: I decided to not use this feature, since Serverless doesn't support 
 #           sending a constant JSON value to the Lambda function, which is a feature
 #           in CloudWatch Events.
 #   

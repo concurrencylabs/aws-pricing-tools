@@ -8,9 +8,22 @@ class ElbPriceDimension():
         self.dataProcessedGb = dataProcessedGb
 
 class Ec2PriceDimension():
-    def __init__(self):
+    def __init__(self, hours, instance_type):
         self.hours = hours
         self.instanceType = instance_type
+
+
+class RdsPriceDimension():
+    def __init__(self, hours, instance_type, storage_gb_month, io_rate, backup_storage_gb_month,data_transfer_out_internet,data_transfer_out_inter_region_gb ):
+        self.hours = hours
+        self.instanceType = instance_type
+        self.storageGbMonth = storage_gb_month
+        self.ioRate = io_rate
+        self.backupStorageDbMonth = backup_storage_gb_month
+        self.dataTransferOutInternetGb = data_transfer_out_internet
+        self.dataTransferOutInterRegionGb = data_transfer_out_inter_region_gb
+
+
 
 
 
@@ -31,7 +44,7 @@ class PricingResult():
 
 class PricingRecord():
     def __init__(self, service, amt, desc, pricePerUnit, usgUnits, rateCode):
-        usgUnits = round(usgUnits,2)
+        usgUnits = round(float(usgUnits),2)
         amt = round(amt,2)
         self.service = service
         #self.resourceId = resourceId  #leaving for future use

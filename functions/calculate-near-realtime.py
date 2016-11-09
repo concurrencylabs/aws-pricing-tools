@@ -5,11 +5,13 @@ import json
 import logging
 import boto3
 import pricecalculator.ec2.pricing as ec2pricing
+import pricecalculator.rds.pricing as rdspricing
 
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 ec2client = None
+rdsclient = None
 elbclient = None
 cwclient = None
 
@@ -37,6 +39,8 @@ CW_METRIC_DIMENSION_PERIOD = 'ForecastPeriod'
 CW_METRIC_DIMENSION_CURRENCY = 'Currency'
 CW_METRIC_DIMENSION_TAG = 'Tag'
 CW_METRIC_DIMENSION_SERVICE_NAME_EC2 = 'ec2'
+CW_METRIC_DIMENSION_SERVICE_NAME_RDS = 'rds'
+CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL = 'total'
 CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 
 
@@ -59,6 +63,8 @@ def handler(event, context):
 
     result = {}
     pricing_records = []
+    ec2Cost = 0
+    rdsCost = 0
     totalCost = 0
 
     #First, get the tags we'll be searching for, from the CloudWatch scheduled event
@@ -79,13 +85,14 @@ def handler(event, context):
     elb_data_processed_gb = 0
     elb_instances = {}
 
-    #Get tagged ELB(s)
+    #Get tagged ELB(s) and their registered instances
     taggedelbs = find_elbs(tagkey, tagvalue)
     if taggedelbs:
         log.info("Found tagged ELBs:{}".format(taggedelbs))
         elb_hours = len(taggedelbs)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
         elb_instances = get_elb_instances(taggedelbs)
         #Get all EC2 instances registered with each tagged ELB, so we can calculate ELB data processed
+        #Registered instances will be used for data processed calculation, and not for instance hours, unless they're tagged.
         if elb_instances:
           log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
           elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
@@ -106,7 +113,7 @@ def handler(event, context):
         elb_cost = ec2pricing.calculate(region=region, elbHours=elb_hours, elbDataProcessedGb=elb_data_processed_gb)
         if 'pricingRecords' in elb_cost:
             pricing_records.extend(elb_cost['pricingRecords'])
-            totalCost = totalCost + elb_cost['totalCost']
+            ec2Cost = ec2Cost + elb_cost['totalCost']
 
 
     #Calculate EC2 compute time for ALL instance types found (subscribed to ELB or not) - group by instance types
@@ -118,9 +125,9 @@ def handler(event, context):
 
     #Calculate EC2 compute time cost
     for instance_type in all_instance_types:
-        ec2_cost = ec2pricing.calculate(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD])
-        if 'pricingRecords' in ec2_cost: pricing_records.extend(ec2_cost['pricingRecords'])
-        totalCost = totalCost + ec2_cost['totalCost']
+        ec2_compute_cost = ec2pricing.calculate(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD])
+        if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
+        ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
 
     #Get provisioned storage by volume type, and provisioned IOPS (if applicable)
     ebs_storage_dict, piops = get_storage_by_ebs_type(all_instance_dict)
@@ -131,42 +138,66 @@ def handler(event, context):
         else: pricing_piops = 0
         ebs_storage_cost = ec2pricing.calculate(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops)
         if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
-        totalCost = totalCost + ebs_storage_cost['totalCost']
+        ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
 
     #Get total snapshot storage
     snapshot_gb_month = get_total_snapshot_storage(tagkey, tagvalue)
     ebs_snapshot_cost = ec2pricing.calculate(region=region, ebsSnapshotGbMonth=snapshot_gb_month)
     if 'pricingRecords' in ebs_snapshot_cost: pricing_records.extend(ebs_snapshot_cost['pricingRecords'])
-    totalCost = totalCost + ebs_snapshot_cost['totalCost']
+    ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
 
+
+    #Get tagged RDS DB instances
+    db_instances = get_db_instances_by_tag(tagkey, tagvalue)
+    if db_instances:
+        log.info("Tagged DB instances:{}".format(db_instances.keys()))
+    else:
+        log.info("Didn't find any tagged DB instances")
+
+    #Calculate RDS instance time for ALL instance types found - group by DB instance types
+    all_db_instance_dict = {}
+    all_db_instance_dict.update(db_instances)
+    all_db_instance_types = get_db_instance_type_count(all_db_instance_dict)
+    log.info("All DB instance types:{}".format(all_db_instance_types))
+
+    #Calculate RDS instance time cost
+    rds_instance_cost = {}
+    for db_instance_type in all_db_instance_types:
+        dbInstanceClass = db_instance_type.split("|")[0]
+        engine = db_instance_type.split("|")[1]
+        licenseModel= db_instance_type.split("|")[2]
+        multiAz= bool(int(db_instance_type.split("|")[3]))
+        rds_instance_cost = rdspricing.calculate(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
+                                        engine=engine, licenseModel=licenseModel,
+                                        instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD])
+
+        if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
+        rdsCost = rdsCost + rds_instance_cost['totalCost']
+
+
+    #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
+    #RDS Data Transfer - ignores transfer between AZs
+
+
+    #Do this after all calculations for all supported services have concluded
+    totalCost = ec2Cost + rdsCost
     result['pricingRecords'] = pricing_records
     result['totalCost'] = round(totalCost,2)
     result['forecastPeriod']=DEFAULT_FORECAST_PERIOD
     result['currency'] = CW_METRIC_DIMENSION_CURRENCY_USD
 
-
     #Publish metrics to CloudWatch using the default namespace
-    response = cwclient.put_metric_data(
-        Namespace=CW_NAMESPACE,
-        MetricData=[
-            {
-                'MetricName': CW_METRIC_NAME_ESTIMATEDCHARGES,
-                'Dimensions': [{'Name': CW_METRIC_DIMENSION_SERVICE_NAME,'Value': CW_METRIC_DIMENSION_SERVICE_NAME_EC2},
-                               {'Name': CW_METRIC_DIMENSION_PERIOD,'Value': DEFAULT_FORECAST_PERIOD},
-                               {'Name': CW_METRIC_DIMENSION_CURRENCY,'Value': CW_METRIC_DIMENSION_CURRENCY_USD},
-                               {'Name': CW_METRIC_DIMENSION_TAG,'Value': tagkey+'='+tagvalue}
-                ],
-                'Timestamp': end,
-                'Value': result['totalCost'],
-                'Unit': 'Count'
-            }
-        ]
-    )
+
+    put_cw_metric_data(end, ec2Cost, CW_METRIC_DIMENSION_SERVICE_NAME_EC2, tagkey, tagvalue)
+    put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
+    put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
 
     log.info (json.dumps(result,sort_keys=False,indent=4))
 
     return result
 
+#TODO: calculate data transfer for instances that are not registered with the ELB
+#TODO:Support different OS for EC2 instances (see how engine and license combinations are calculated for RDS)
 #TODO: log the actual AWS resources that are found for the price calculation
 #TODO: add support for detailed metrics fee
 #TODO: add support for EBS optimized
@@ -176,6 +207,27 @@ def handler(event, context):
 #TODO: calculate monthly hours based on the current month, instead of assuming 720
 #TODO: add support for dynamic forecast period (1 hour, 1 day, 1 month, etc.)
 #TODO: add support for Spot and Reserved. Function only supports On-demand instances at the time
+
+
+def put_cw_metric_data(timestamp, cost, service, tagkey, tagvalue):
+
+    response = cwclient.put_metric_data(
+        Namespace=CW_NAMESPACE,
+        MetricData=[
+            {
+                'MetricName': CW_METRIC_NAME_ESTIMATEDCHARGES,
+                'Dimensions': [{'Name': CW_METRIC_DIMENSION_SERVICE_NAME,'Value': service},
+                               {'Name': CW_METRIC_DIMENSION_PERIOD,'Value': DEFAULT_FORECAST_PERIOD},
+                               {'Name': CW_METRIC_DIMENSION_CURRENCY,'Value': CW_METRIC_DIMENSION_CURRENCY_USD},
+                               {'Name': CW_METRIC_DIMENSION_TAG,'Value': tagkey+'='+tagvalue}
+                ],
+                'Timestamp': timestamp,
+                'Value': cost,
+                'Unit': 'Count'
+            }
+        ]
+    )
+
 
 
 
@@ -195,7 +247,9 @@ def find_elbs(tagkey, tagvalue):
                 for t in tags:
                     if t['Key']==tagkey and t['Value']==tagvalue:
                         result.append(tg['LoadBalancerName'])
+                        break
     return result
+
 
 
 def get_elb_instances(elbnames):
@@ -234,6 +288,26 @@ def get_ec2_instances_by_tag(tagkey, tagvalue):
 
 
 
+def get_db_instances_by_tag(tagkey, tagvalue):
+    result = {}
+    #TODO: paginate
+    response = rdsclient.describe_db_instances(Filters=[])#boto doesn't support filter by tags
+    if 'DBInstances' in response:
+        dbInstances = response['DBInstances']
+        for d in dbInstances:
+            resourceName = "arn:aws:rds:"+region+":"+awsaccount+":db:"+d['DBInstanceIdentifier']
+            tags = rdsclient.list_tags_for_resource(ResourceName=resourceName)
+            if 'TagList' in tags:
+                for t in tags['TagList']:
+                    if t['Key'] == tagkey and t['Value'] == tagvalue:
+                        result[d['DbiResourceId']]=d
+
+    #print ("Found DB instances by tag: ["+str(result)+"]")
+    return result
+
+
+
+
 
 def get_non_elb_instances_by_tag(tagkey, tagvalue, elb_instances):
     result = {}
@@ -256,6 +330,28 @@ def get_instance_type_count(instance_dict):
         else:
             result[instance_type] = 1
     return result
+
+
+def get_db_instance_type_count(db_instance_dict):
+    result = {}
+    for key in db_instance_dict:
+        #key format: db-instance-class|engine|license-model
+        multiAz = 0
+        if db_instance_dict[key]['MultiAZ']==True:multiAz=1
+        db_instance_key = db_instance_dict[key]['DBInstanceClass']+"|"+\
+                          db_instance_dict[key]['Engine']+"|"+\
+                          db_instance_dict[key]['LicenseModel']+"|"+\
+                          str(multiAz)
+        if db_instance_key in result:
+            result[db_instance_key] = result[db_instance_key] + 1
+        else:
+            result[db_instance_key] = 1
+    return result
+
+
+
+
+
 
 def get_storage_by_ebs_type(instance_dict):
     result = {}
@@ -357,13 +453,17 @@ def get_ec2_instances(registered, all):
 
 def init_clients(context):
     global ec2client
+    global rdsclient
     global elbclient
     global cwclient
     global region
+    global awsaccount
 
     arn = context.invoked_function_arn
     region = arn.split(":")[3] #ARN format is arn:aws:lambda:us-east-1:xxx:xxxx
+    awsaccount = arn.split(":")[4]
     ec2client = boto3.client('ec2',region)
+    rdsclient = boto3.client('rds',region)
     elbclient = boto3.client('elb',region)
     cwclient = boto3.client('cloudwatch', region)
 
