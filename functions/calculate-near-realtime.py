@@ -234,20 +234,27 @@ def put_cw_metric_data(timestamp, cost, service, tagkey, tagvalue):
 
 def find_elbs(tagkey, tagvalue):
     result = []
+    #By default, this call supports a page size of 400, which should be enough for most scenarios.
     elbs = elbclient.describe_load_balancers(LoadBalancerNames=[])
     all_elb_names = []
     if 'LoadBalancerDescriptions' in elbs:
         for e in elbs['LoadBalancerDescriptions']:
             all_elb_names.append(e['LoadBalancerName'])
 
-        if all_elb_names:
-            tag_desc = elbclient.describe_tags(LoadBalancerNames=all_elb_names)
-            for tg in tag_desc['TagDescriptions']:
-                tags = tg['Tags']
-                for t in tags:
-                    if t['Key']==tagkey and t['Value']==tagvalue:
-                        result.append(tg['LoadBalancerName'])
-                        break
+        elb_count = len(all_elb_names)
+        partial_elb_names = []
+        for i, elem in enumerate(all_elb_names):
+            partial_elb_names.append(all_elb_names[i])
+            #describe_tags can't take more than 20 ELB names as an input
+            if ((i+1) % 20 == 0) or ((i+1) == elb_count):
+                tag_desc = elbclient.describe_tags(LoadBalancerNames=partial_elb_names)
+                for tg in tag_desc['TagDescriptions']:
+                    tags = tg['Tags']
+                    for t in tags:
+                        if t['Key']==tagkey and t['Value']==tagvalue:
+                            result.append(tg['LoadBalancerName'])
+                            break
+                partial_elb_names = []
     return result
 
 
