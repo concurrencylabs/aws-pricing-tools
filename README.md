@@ -176,6 +176,11 @@ Serverless requires - avoid Administrator access, which is a bad security and op
 
 ### Testing the function locally
 
+Make sure you have the following environment variables set:
+
+export AWS_DEFAULT_PROFILE=<your-aws-cli-profile>
+export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
+
 
 Once you have: virtualenv activated, Boto3, Serverless and python-local-lambda installed as well
 as the code checked out, it's time to run a test.
@@ -184,7 +189,7 @@ Update ```test-events/constant-tag.json``` with a tag key/value pair that exists
 Then run:
 
 ```
-python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:us-east-1:123456789012:function:realtime-pricing-ec2-calculate
+python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:<your-region>:<your-aws-account-id>:function:realtime-pricing-ec2-calculate
 ```
 
 
