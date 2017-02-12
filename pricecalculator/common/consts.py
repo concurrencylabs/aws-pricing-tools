@@ -109,9 +109,11 @@ STORAGE_MEDIA_SSD = "SSD-backed"
 STORAGE_MEDIA_HDD = "HDD-backed"
 STORAGE_MEDIA_S3 = "AmazonS3"
 
-EBS_VOLUME_TYPE_PIOPS = "Provisioned IOPS"
 EBS_VOLUME_TYPE_MAGNETIC = "Magnetic"
 EBS_VOLUME_TYPE_GENERAL_PURPOSE = "General Purpose"
+EBS_VOLUME_TYPE_PIOPS = "Provisioned IOPS"
+EBS_VOLUME_TYPE_THROUGHPUT_OPTIMIZED = "Throughput Optimized HDD"
+EBS_VOLUME_TYPE_COLD_HDD = "Cold HDD"
 
 #Values that are valid in the calling script (which could be a Lambda function or any Python module)
 #To make things simpler, these are the values that are used in the AWS API
@@ -156,8 +158,8 @@ EBS_VOLUME_TYPES_MAP = {
                         SCRIPT_EBS_VOLUME_TYPE_STANDARD : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_MAGNETIC},
                         SCRIPT_EBS_VOLUME_TYPE_IO1 : {'storageMedia':STORAGE_MEDIA_SSD , 'volumeType':EBS_VOLUME_TYPE_PIOPS}, 
                         SCRIPT_EBS_VOLUME_TYPE_GP2 : {'storageMedia':STORAGE_MEDIA_SSD , 'volumeType':EBS_VOLUME_TYPE_GENERAL_PURPOSE},
-                        SCRIPT_EBS_VOLUME_TYPE_SC1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_MAGNETIC},
-                        SCRIPT_EBS_VOLUME_TYPE_ST1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_MAGNETIC}
+                        SCRIPT_EBS_VOLUME_TYPE_SC1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_COLD_HDD},
+                        SCRIPT_EBS_VOLUME_TYPE_ST1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_THROUGHPUT_OPTIMIZED}
                        }
 
 
