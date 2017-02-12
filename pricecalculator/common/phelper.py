@@ -3,6 +3,37 @@ import consts
 
 
 
+def is_data_transfer_out_internet(sku_data):
+  result = False
+  if sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER\
+    and sku_data['attributes']['toLocation'] == 'External'\
+    and sku_data['attributes']['transferType'] == 'AWS Outbound':
+    result = True
+
+  return result
+
+
+def is_data_transfer_intraregional(sku_data):
+  result = False
+  if sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER\
+    and sku_data['attributes']['transferType'] == 'IntraRegion':
+    result = True
+
+  return result
+
+
+def is_data_transfer_interregional(sku_data, toRegion):
+  result = False
+  if sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER\
+    and sku_data['attributes']['transferType'] == 'InterRegion Outbound':
+      if sku_data['attributes']['toLocation'] == consts.REGION_MAP[toRegion]:
+        result = True
+
+  return result
+
+
+
+
 
 def getBillableBand(priceDimensions, usageAmount):
   billableBand = 0
@@ -38,7 +69,10 @@ def get_price_dimensions(term_data):
 def get_terms(price_data, skus, **kwargs):
   terms = []
   type = kwargs['type']
-  terms = [price_data['terms'][type][k] for k in skus]
+  #terms = [price_data['terms'][type][k] for k in skus]
+  for k in skus:
+    if k in price_data['terms'][type]:
+      terms.append(price_data['terms'][type][k])
   #print("terms: "+json.dumps(terms,sort_keys=True,indent=4, separators=(',', ': ')))
   return terms
   

@@ -4,6 +4,10 @@
 
 This repository uses the AWS Price List API to implement price calculation utilities.
 
+Supported services:
+* EC2
+* RDS
+* Lambda
 
 Visit this URL for more details:
 
@@ -25,10 +29,11 @@ The function receives a JSON object configured in the schedule. The JSON object 
 The function finds EC2 resources with the corresponding tag, gets current usage using CloudWatch metrics,
 projects usage into a longer time period (i.e. a month), calls pricecalculator to calculate price 
 and puts results in CloudWatch metrics.
+For Lambda pricing calculations, the JSON object configured in the CloudWatch Events schedule must have the following format ```{"functions":[{"name":"my-function-name"}]}```
 
 
 **Rules:**
-* The function only considers for price calculation those resources that are tagged. For example, if there is an untagged ELB
+* The function only considers for price calculation those resources that are tagged, except for Lambda functions. For example, if there is an untagged ELB
 with tagged EC2 instances, the function will only consider the EC2 instances for the calculation.
 If there is a tagged ELB with untagged EC2 instances, the function will only calculate price
 for the ELB. 
@@ -36,6 +41,7 @@ for the ELB.
 cover a number of combinations that might or might not be suitable to all users of the function. 
 * To keep it simple, if you want a resource to be included in the calculation, then tag it. Otherwise
 leave it untagged.
+* Lambda pricing calculations are based on the function name and not tags. This is because tags are not supported yet for Lambda functions.
 
 
 
@@ -153,7 +159,7 @@ node --version
 
 2. Install the Serverless Framework
 ```
-npm install -g serverless@beta
+npm install -g serverless
 ```
 
 
@@ -161,7 +167,7 @@ npm install -g serverless@beta
 ```
 serverless --version
 ```
-The steps in this post were tested using version ```1.0.0-beta.2```
+The steps in this post were tested using version ```1.6.1```
 
 
 4. Serverless needs access to your AWS account, so it can create and update AWS Lambda 
@@ -176,6 +182,11 @@ Serverless requires - avoid Administrator access, which is a bad security and op
 
 ### Testing the function locally
 
+Make sure you have the following environment variables set:
+
+export AWS_DEFAULT_PROFILE=<your-aws-cli-profile>
+export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
+
 
 Once you have: virtualenv activated, Boto3, Serverless and python-local-lambda installed as well
 as the code checked out, it's time to run a test.
@@ -184,7 +195,7 @@ Update ```test-events/constant-tag.json``` with a tag key/value pair that exists
 Then run:
 
 ```
-python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:us-east-1:123456789012:function:realtime-pricing-ec2-calculate
+python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:<your-region>:<your-aws-account-id>:function:calculate-near-realtime
 ```
 
 

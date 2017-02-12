@@ -10,7 +10,9 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'us-east-2':'US East (Ohio)',
               'us-west-1':'US West (N. California)',
               'us-west-2':'US West (Oregon)',
+              'ca-central-1':'Canada (Central)',
               'eu-west-1':'EU (Ireland)',
+              'eu-west-2':'EU (London)',
               'eu-central-1':'EU (Frankfurt)',              
               'ap-northeast-1':'Asia Pacific (Tokyo)',
               'ap-northeast-2':'Asia Pacific (Seoul)',              
@@ -20,18 +22,20 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ap-south-1':'Asia Pacific (Mumbai)'
               }
 
-REGION_REPORT_MAP = {'us-east-1':'N. Virginia)',
-              'us-east-2':'Ohio)',
-              'us-west-1':'N. California)',
-              'us-west-2':'Oregon)',
-              'eu-west-1':'Ireland)',
-              'eu-central-1':'Frankfurt)',
-              'ap-northeast-1':'Tokyo)',
-              'ap-northeast-2':'Asia Pacific (Seoul)',
-              'ap-southeast-1':'Asia Pacific (Singapore)',
-              'ap-southeast-2':'Asia Pacific (Sydney)',
-              'sa-east-1':'South America (Sao Paulo)',
-              'ap-south-1':'Asia Pacific (Mumbai)'
+REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
+              'us-east-2':'Ohio',
+              'us-west-1':'N. California',
+              'us-west-2':'Oregon',
+              'ca-central-1':'Canada',
+              'eu-west-1':'Ireland',
+              'eu-west-2':'London',
+              'eu-central-1':'Frankfurt',
+              'ap-northeast-1':'Tokyo',
+              'ap-northeast-2':'Seoul',
+              'ap-southeast-1':'Singapore',
+              'ap-southeast-2':'Sydney',
+              'sa-east-1':'Sao Paulo',
+              'ap-south-1':'Mumbai'
               }
 
 
@@ -45,11 +49,12 @@ SERVICE_ELB = 'elb'
 SERVICE_EBS = 'ebs'
 SERVICE_S3 = 's3'
 SERVICE_RDS = 'rds'
+SERVICE_LAMBDA = 'lambda'
 
 SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS)
 
-SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2', 'eu-west-1', 'eu-central-1',
-                     'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
+SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
+                     'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1')
 
 SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large' , 'm1.small' ,
@@ -77,13 +82,14 @@ PRODUCT_FAMILY_STORAGE = 'Storage'
 PRODUCT_FAMILY_SYSTEM_OPERATION = 'System Operation'
 PRODUCT_FAMILY_LOAD_BALANCER = 'Load Balancer'
 PRODUCT_FAMILY_SNAPSHOT = "Storage Snapshot"
+PRODUCT_FAMILY_SERVERLESS = "Serverless"
 
 
 INFINITY = 'Inf'
 
 SORT_CRITERIA_REGION = 'region'
 SORT_CRITERIA_S3_STORAGE_CLASS = 'storage-class'
-
+SORT_CRITERIA_TO_REGION = 'to-region'
 
 
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -94,6 +100,10 @@ EC2_OPERATING_SYSTEM_WINDOWS = 'Windows'
 EC2_OPERATING_SYSTEM_SUSE = 'Suse'
 EC2_OPERATING_SYSTEM_SQL_WEB = 'SQL Web'
 EC2_OPERATING_SYSTEM_RHEL = 'RHEL'
+
+EC2_TENANCY_SHARED = 'Shared'
+EC2_TENANCY_DEDICATED = 'Dedicated'
+
 
 STORAGE_MEDIA_SSD = "SSD-backed"
 STORAGE_MEDIA_HDD = "HDD-backed"
@@ -157,7 +167,7 @@ EBS_VOLUME_TYPES_MAP = {
 
 SUPPORTED_RDS_INSTANCE_CLASSES =('db.t2.micro','db.t2.small','db.t2.medium','db.t2.large', 'db.r3.large', 'db.r3.xlarge',
                                'db.r3.2xlarge', 'db.r3.4xlarge','db.r3.8xlarge','db.m4.large','db.m4.xlarge','db.m4.2xlarge',
-                               'db.m4.4xlarge','db.m4.10xlarge')
+                               'db.m4.4xlarge','db.m4.10xlarge','db.m3.medium','db.m3.large', 'db.m3.xlarge', 'db.m3.2xlarge')
 
 
 RDS_DEPLOYMENT_OPTION_SINGLE_AZ = 'Single-AZ'

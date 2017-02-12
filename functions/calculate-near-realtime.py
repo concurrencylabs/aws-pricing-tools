@@ -6,6 +6,10 @@ import logging
 import boto3
 import pricecalculator.ec2.pricing as ec2pricing
 import pricecalculator.rds.pricing as rdspricing
+import pricecalculator.awslambda.pricing as lambdapricing
+
+import pricecalculator.common.data as data
+
 
 log = logging.getLogger()
 log.setLevel(logging.INFO)
@@ -13,6 +17,7 @@ log.setLevel(logging.INFO)
 ec2client = None
 rdsclient = None
 elbclient = None
+lambdaclient = None
 cwclient = None
 
 
@@ -40,6 +45,7 @@ CW_METRIC_DIMENSION_CURRENCY = 'Currency'
 CW_METRIC_DIMENSION_TAG = 'Tag'
 CW_METRIC_DIMENSION_SERVICE_NAME_EC2 = 'ec2'
 CW_METRIC_DIMENSION_SERVICE_NAME_RDS = 'rds'
+CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA = 'lambda'
 CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL = 'total'
 CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 
@@ -65,6 +71,7 @@ def handler(event, context):
     pricing_records = []
     ec2Cost = 0
     rdsCost = 0
+    lambdaCost = 0
     totalCost = 0
 
     #First, get the tags we'll be searching for, from the CloudWatch scheduled event
@@ -75,9 +82,17 @@ def handler(event, context):
       tagvalue = event['tag']['value']
       if tagkey == "" or tagvalue == "":
           log.error("No tags specified, aborting function!")
+          #TODO:return only if there are no functions
           return {}
 
-    log.info("Will search resources with the following tag:["+tagkey+"] - value["+tagvalue+"]")
+      log.info("Will search resources with the following tag:["+tagkey+"] - value["+tagvalue+"]")
+
+    #Then, let's see if there are any Lambda functions in the input event
+    lambdafunctions = []
+    if 'functions' in event:
+      lambdafunctions = event['functions']
+      #functions will have the following JSON format: "functions":[{"name":"my-function-name"},{"name":"my-other-function-name"}]
+
 
     start, end = calculate_time_range()
 
@@ -142,9 +157,13 @@ def handler(event, context):
 
     #Get total snapshot storage
     snapshot_gb_month = get_total_snapshot_storage(tagkey, tagvalue)
-    ebs_snapshot_cost = ec2pricing.calculate(region=region, ebsSnapshotGbMonth=snapshot_gb_month)
-    if 'pricingRecords' in ebs_snapshot_cost: pricing_records.extend(ebs_snapshot_cost['pricingRecords'])
-    ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
+    ebs_snapshot_cost = {}
+    if snapshot_gb_month:
+      ebs_snapshot_cost = ec2pricing.calculate(region=region, ebsSnapshotGbMonth=snapshot_gb_month)
+      if 'pricingRecords' in ebs_snapshot_cost: pricing_records.extend(ebs_snapshot_cost['pricingRecords'])
+      ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
+    else:
+      log.info("Didn't find any tagged EBS snapshots")
 
 
     #Get tagged RDS DB instances
@@ -179,8 +198,29 @@ def handler(event, context):
     #RDS Data Transfer - ignores transfer between AZs
 
 
+    #Lambda functions
+    for func in lambdafunctions:
+      executions = calculate_lambda_executions(start, end, func)
+      avgduration = calculate_lambda_duration(start, end, func)
+      fname = ''
+      qualifier = ''
+      if 'name' in func: fname = func['name']
+      if 'qualifier' in func: qualifier = func['qualifier']
+      memory = get_lambda_memory(fname,qualifier)
+      log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(func['name'],executions,memory, avgduration))
+      #Note we're sending data transfer as 0, since we don't have a way to calculate it based on CW metrics
+      lambdapdim = data.LambdaPriceDimension(region=region, request_count=executions*calculate_forecast_factor(),
+                                        avg_duration_ms=avgduration, memory_mb=memory, data_tranfer_out_internet_gb=0,
+                                        data_transfer_out_intra_region_gb=0, data_transfer_out_inter_region_gb=0,
+                                        to_region='')
+      lambda_func_cost = lambdapricing.calculate(lambdapdim)
+      if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
+      lambdaCost = lambdaCost + lambda_func_cost['totalCost']
+      put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fname)
+
+
     #Do this after all calculations for all supported services have concluded
-    totalCost = ec2Cost + rdsCost
+    totalCost = ec2Cost + rdsCost + lambdaCost
     result['pricingRecords'] = pricing_records
     result['totalCost'] = round(totalCost,2)
     result['forecastPeriod']=DEFAULT_FORECAST_PERIOD
@@ -188,9 +228,14 @@ def handler(event, context):
 
     #Publish metrics to CloudWatch using the default namespace
 
-    put_cw_metric_data(end, ec2Cost, CW_METRIC_DIMENSION_SERVICE_NAME_EC2, tagkey, tagvalue)
-    put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
-    put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
+    if tagkey:
+      put_cw_metric_data(end, ec2Cost, CW_METRIC_DIMENSION_SERVICE_NAME_EC2, tagkey, tagvalue)
+      put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
+      put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
+
+
+    if lambdafunctions:
+      put_cw_metric_data(end, lambdaCost, CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'service' , 'lambda')
 
     log.info (json.dumps(result,sort_keys=False,indent=4))
 
@@ -357,9 +402,6 @@ def get_db_instance_type_count(db_instance_dict):
 
 
 
-
-
-
 def get_storage_by_ebs_type(instance_dict):
     result = {}
     iops = 0
@@ -431,9 +473,69 @@ def calculate_elb_data_processed(start, end, elb_instances):
 
     log.info ("Total Bytes processed by ELBs in time window of ["+str(METRIC_WINDOW)+"] minutes :["+str(result)+"]")
 
+    return result
 
+
+
+def calculate_lambda_executions(start, end, func):
+    result = 0
+
+    invocations = cwclient.get_metric_statistics(
+            Namespace='AWS/Lambda',
+            MetricName='Invocations',
+            Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            StartTime=start,
+            EndTime=end,
+            Period=60*METRIC_WINDOW,
+            Statistics = ['Sum']
+        )
+    for datapoint in invocations['Datapoints']:
+      if 'Sum' in datapoint: result = result + datapoint['Sum']
 
     return result
+
+
+def calculate_lambda_duration(start, end, func):
+    result = 0
+
+    invocations = cwclient.get_metric_statistics(
+            Namespace='AWS/Lambda',
+            MetricName='Duration',
+            Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            StartTime=start,
+            EndTime=end,
+            Period=60*METRIC_WINDOW,
+            Statistics = ['Average']
+        )
+    count = 0
+    total = 0
+    for datapoint in invocations['Datapoints']:
+      if 'Average' in datapoint:
+          count+=1
+          total+=datapoint['Average']
+
+    if count: result = total / count
+
+    return result
+
+
+
+
+
+
+def get_lambda_memory(functionname, qualifier):
+    result = 0
+    #TODO: handle case where function does not exist
+    args = {}
+    if qualifier: args = {'FunctionName':functionname,'Qualifier':qualifier}
+    else: args = {'FunctionName':functionname}
+    response = lambdaclient.get_function_configuration(**args)
+    if 'MemorySize' in response:
+        result = response['MemorySize']
+
+    return result
+
+
 
 
 def calculate_time_range():
@@ -462,6 +564,7 @@ def init_clients(context):
     global ec2client
     global rdsclient
     global elbclient
+    global lambdaclient
     global cwclient
     global region
     global awsaccount
@@ -472,6 +575,7 @@ def init_clients(context):
     ec2client = boto3.client('ec2',region)
     rdsclient = boto3.client('rds',region)
     elbclient = boto3.client('elb',region)
+    lambdaclient = boto3.client('lambda',region)
     cwclient = boto3.client('cloudwatch', region)
 
 

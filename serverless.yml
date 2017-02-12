@@ -28,6 +28,7 @@ package:
     - bin/*
     - lib/**
     - .git/**
+    - .idea/**
     - include/**
     - pip-selfcheck.json
     - pricecalculator/s3

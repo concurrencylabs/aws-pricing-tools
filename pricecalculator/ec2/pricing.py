@@ -9,6 +9,7 @@ log = logging.getLogger()
 
 
 def calculate(**kwargs):
+
   log.info("Calculating EC2 pricing with the following inputs: {}".format(str(kwargs)))
 
   region = ''
@@ -23,8 +24,15 @@ def calculate(**kwargs):
   operatingSystem = consts.SCRIPT_OPERATING_SYSTEM_LINUX
   if 'operatingSystem' in kwargs: operatingSystem = kwargs['operatingSystem']
 
+  #TODO:remove the Month
   dataOutInternetGbMonth = 0
   if 'dataOutInternetGbMonth' in kwargs: dataOutInternetGbMonth = kwargs['dataOutInternetGbMonth']
+
+  interRegionDataTransferGb = 0
+  if 'interRegionDataTransferGb' in kwargs: interRegionDataTransferGb = kwargs['interRegionDataTransferGb']
+
+  toRegion = ''
+  if 'toRegion' in kwargs: toRegion = kwargs['toRegion']
 
   pIops = 0
   if 'pIops' in kwargs: pIops = kwargs['pIops']
@@ -53,6 +61,16 @@ def calculate(**kwargs):
   volumeType = ''
   if ebsVolumeType in consts.EBS_VOLUME_TYPES_MAP: volumeType = consts.EBS_VOLUME_TYPES_MAP[ebsVolumeType]['volumeType']
 
+
+  #Assign default values
+  if not operatingSystem:
+    operatingSystem = consts.SCRIPT_OPERATING_SYSTEM_LINUX
+  if not volumeType:
+    volumeType = consts.SCRIPT_EBS_VOLUME_TYPE_GP2
+  #TODO: Add support for shared and dedicated tenancies
+  tenancy = consts.EC2_TENANCY_SHARED
+
+
   validate(region, instanceType, operatingSystem, dataOutInternetGbMonth, ebsVolumeType)
 
   __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
@@ -66,9 +84,8 @@ def calculate(**kwargs):
   pricing_records = []
   skus = phelper.get_skus(price_data, region=region)
 
-  #print("size of price_data:["+str(sys.getsizeof(price_data))+"] - size of skus:["+ str(sys.getsizeof(skus))+"]")
-
   #TODO: Optimize the way we access skus in json file. We are iterating over a large number of SKUs. In the future it would be good to create a DDB table for SKUs
+  #TODO: Exit when all input parameters have been evaluated - avoid iterating unnecessarily through the SKUs
   for sku in skus:
     service = consts.SERVICE_EC2
 
@@ -76,9 +93,6 @@ def calculate(**kwargs):
     #TODO: add support for Reserved and Spot
     term_data = phelper.get_terms(price_data, [sku], type='OnDemand')
     pd = phelper.get_price_dimensions(term_data)
-    #print("sku_data:"+json.dumps(sku_data,sort_keys=True,indent=4, separators=(',', ': ')))
-    #print("term_data:"+json.dumps(term_data,sort_keys=True,indent=4, separators=(',', ': ')))
-    #print("price_dimensions:"+json.dumps(pd,sort_keys=True,indent=4, separators=(',', ': ')))
 
     for p in pd:
       amt = 0
@@ -90,9 +104,9 @@ def calculate(**kwargs):
       #Compute Instance
       if sku_data['productFamily'] == consts.PRODUCT_FAMILY_COMPUTE_INSTANCE:
         usageUnits = instanceHours
-        if sku_data['attributes']['instanceType'] == instanceType and sku_data['attributes']['operatingSystem'] == consts.EC2_OPERATING_SYSTEMS_MAP[operatingSystem]:
+        if sku_data['attributes']['instanceType'] == instanceType and sku_data['attributes']['operatingSystem'] == consts.EC2_OPERATING_SYSTEMS_MAP[operatingSystem]\
+                and sku_data['attributes']['tenancy'] == consts.EC2_TENANCY_SHARED:
           amt = pricePerUnit * float(usageUnits)
-          #print("Calculating EC2 hours: amt["+str(amt)+"] - pricePerUnit:["+str(pricePerUnit)+"]")
 
       #Data Transfer
       if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DATA_TRANSFER:
@@ -102,10 +116,17 @@ def calculate(**kwargs):
           billableBand = phelper.getBillableBand(p, dataOutInternetGbMonth)
           amt = pricePerUnit * billableBand
 
-        #Intra-regional data transfer - in/out/between EC2 AZs or using IPs or ELB
-        if intraRegionDataTransferGb and sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER and sku_data['attributes']['transferType'] == 'IntraRegion':
+        #Intra-regional data transfer - in/out/between EC2 AZs or using EIPs or ELB
+        if intraRegionDataTransferGb and phelper.is_data_transfer_intraregional(sku_data):
           usageUnits = intraRegionDataTransferGb
           amt = pricePerUnit * usageUnits
+
+        #Inter-regional data transfer - out to other AWS regions
+        if interRegionDataTransferGb and phelper.is_data_transfer_interregional(sku_data, toRegion):
+          usageUnits = interRegionDataTransferGb
+          amt = pricePerUnit * usageUnits
+
+
 
       #EIP
         
@@ -113,9 +134,8 @@ def calculate(**kwargs):
       if ebsStorageGbMonth and sku_data['productFamily'] == consts.PRODUCT_FAMILY_STORAGE:
         service = consts.SERVICE_EBS
         usageUnits = ebsStorageGbMonth
-        #print("will calculate EBS - storageMedia:["+storageMedia+"] - volumeType:["+volumeType+"]")
         if sku_data['attributes']['storageMedia'] == storageMedia and sku_data['attributes']['volumeType'] == volumeType:
-          amt = pricePerUnit * usageUnits
+          amt = pricePerUnit * float(usageUnits)
 
       #System Operation (for IOPS)
       if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SYSTEM_OPERATION:
@@ -129,7 +149,7 @@ def calculate(**kwargs):
       if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SNAPSHOT:
         service = consts.SERVICE_EBS
         if 'EBS:SnapshotUsage' in sku_data['attributes']['usagetype']: usageUnits = ebsSnapshotGbMonth
-        amt = pricePerUnit * usageUnits
+        amt = pricePerUnit * float(usageUnits)
 
 
 
@@ -179,6 +199,7 @@ def validate(region, instanceType, operatingSystem, dataOutInternetGbMonth, ebsV
     validation_ok = False
   #TODO: add validation for max number of IOPS
   #TODO: add validation for negative numbers
+  #TODO: add validation for inter-regional data transfer: to-region is mandatory
 
   if not validation_ok:
       raise ValidationError(validation_message)

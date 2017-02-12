@@ -6,9 +6,9 @@ from urllib2 import urlopen
 def main(argv):
 
   SUPPORTED_REGIONS = ('us-east-1')
-  SUPPORTED_SERVICES = ('s3', 'ec2','rds')
+  SUPPORTED_SERVICES = ('s3', 'ec2','rds','awslambda')
   SUPPORTED_FORMATS = ('json','csv')
-  SERVICE_INDEX_MAP = {'s3':'AmazonS3', 'ec2':'AmazonEC2', 'rds':'AmazonRDS'}
+  SERVICE_INDEX_MAP = {'s3':'AmazonS3', 'ec2':'AmazonEC2', 'rds':'AmazonRDS','awslambda':'AWSLambda'}
   OFFER_INDEX_URL = 'https://pricing.{region}.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
   
   region = 'us-east-1'

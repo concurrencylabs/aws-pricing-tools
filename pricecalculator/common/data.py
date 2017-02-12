@@ -1,4 +1,5 @@
 import consts
+from errors import ValidationError
 
 
 
@@ -14,7 +15,8 @@ class Ec2PriceDimension():
 
 
 class RdsPriceDimension():
-    def __init__(self, hours, instance_type, storage_gb_month, io_rate, backup_storage_gb_month,data_transfer_out_internet,data_transfer_out_inter_region_gb ):
+    def __init__(self, hours, instance_type, storage_gb_month, io_rate, backup_storage_gb_month,
+                 data_transfer_out_internet,data_transfer_out_inter_region_gb ):
         self.hours = hours
         self.instanceType = instance_type
         self.storageGbMonth = storage_gb_month
@@ -22,6 +24,40 @@ class RdsPriceDimension():
         self.backupStorageDbMonth = backup_storage_gb_month
         self.dataTransferOutInternetGb = data_transfer_out_internet
         self.dataTransferOutInterRegionGb = data_transfer_out_inter_region_gb
+
+
+class LambdaPriceDimension():
+    def __init__(self,region, request_count, avg_duration_ms, memory_mb,  data_tranfer_out_internet_gb,
+                 data_transfer_out_intra_region_gb, data_transfer_out_inter_region_gb, to_region):
+        self.region = region
+        self.requestCount = request_count
+        self.avgDurationMs = avg_duration_ms
+        self.memoryMb = memory_mb
+        self.dataTransferOutInternetGb = data_tranfer_out_internet_gb
+        self.dataTransferOutIntraRegionGb = data_transfer_out_intra_region_gb
+        self.dataTransferOutInterRegionGb = data_transfer_out_inter_region_gb
+        self.toRegion = to_region
+        self.validate()
+
+    def validate(self):
+        validation_ok = True
+        validation_message = ""
+        if not self.region:
+            validation_message = "Region must be specified"
+            validation_ok = False
+        if self.region not in consts.SUPPORTED_REGIONS:
+            validation_message = "Region must be one of the following:"+str(consts.SUPPORTED_REGIONS)
+            validation_ok = False
+        if self.requestCount == 0 and (self.avgDurationMs > 0 or self.memoryMb > 0):
+            validation_message = "Cannot have value for average duration or memory if requestCount is zero"
+            validation_ok = False
+        if self.dataTransferOutInterRegionGb > 0 and not self.toRegion:
+            validation_message = "Must specify a to-region if you specify data-transfer-out-interregion_gb"
+            validation_ok = False
+        if not validation_ok:
+            raise ValidationError(validation_message)
+
+        return
 
 
 
@@ -53,7 +89,7 @@ class PricingRecord():
         self.amount = amt
         self.description = desc
         self.pricePerUnit = pricePerUnit
-        self.usageUnits = usgUnits
+        self.usageUnits = int(usgUnits)
         self.rateCode = rateCode
 
 
