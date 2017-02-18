@@ -84,6 +84,9 @@ PRODUCT_FAMILY_LOAD_BALANCER = 'Load Balancer'
 PRODUCT_FAMILY_SNAPSHOT = "Storage Snapshot"
 PRODUCT_FAMILY_SERVERLESS = "Serverless"
 
+PRODUCT_FAMILY_DB_STORAGE = "Database Storage"
+PRODUCT_FAMILY_DB_PIOPS = "Provisioned IOPS"
+
 
 INFINITY = 'Inf'
 
@@ -170,6 +173,31 @@ EBS_VOLUME_TYPES_MAP = {
 SUPPORTED_RDS_INSTANCE_CLASSES =('db.t2.micro','db.t2.small','db.t2.medium','db.t2.large', 'db.r3.large', 'db.r3.xlarge',
                                'db.r3.2xlarge', 'db.r3.4xlarge','db.r3.8xlarge','db.m4.large','db.m4.xlarge','db.m4.2xlarge',
                                'db.m4.4xlarge','db.m4.10xlarge','db.m3.medium','db.m3.large', 'db.m3.xlarge', 'db.m3.2xlarge')
+
+
+SCRIPT_RDS_STORAGE_TYPE_STANDARD = 'standard'
+SCRIPT_RDS_STORAGE_TYPE_AURORA = 'aurora' #Aurora has its own type of storage, which is billed by IO operations and size
+SCRIPT_RDS_STORAGE_TYPE_GP2 = 'gp2'
+SCRIPT_RDS_STORAGE_TYPE_IO1 = 'io1'
+
+RDS_VOLUME_TYPE_MAGNETIC = 'Magnetic'
+RDS_VOLUME_TYPE_AURORA = 'General Purpose-Aurora'
+RDS_VOLUME_TYPE_GP2 = 'General Purpose'
+RDS_VOLUME_TYPE_IO1 = 'Provisioned IOPS'
+
+
+
+
+RDS_VOLUME_TYPES_MAP = {
+                        SCRIPT_RDS_STORAGE_TYPE_STANDARD : RDS_VOLUME_TYPE_MAGNETIC,
+                        SCRIPT_RDS_STORAGE_TYPE_AURORA : RDS_VOLUME_TYPE_AURORA,
+                        SCRIPT_RDS_STORAGE_TYPE_GP2 : RDS_VOLUME_TYPE_GP2,
+                        SCRIPT_RDS_STORAGE_TYPE_IO1 : RDS_VOLUME_TYPE_IO1
+                       }
+
+
+
+SUPPORTED_RDS_STORAGE_TYPES = (SCRIPT_RDS_STORAGE_TYPE_STANDARD, SCRIPT_RDS_STORAGE_TYPE_AURORA, SCRIPT_RDS_STORAGE_TYPE_GP2, SCRIPT_RDS_STORAGE_TYPE_IO1)
 
 
 RDS_DEPLOYMENT_OPTION_SINGLE_AZ = 'Single-AZ'

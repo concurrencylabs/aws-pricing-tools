@@ -125,7 +125,8 @@ def handler(event, context):
 
     #Calculate ELB cost
     if elb_hours:
-        elb_cost = ec2pricing.calculate(region=region, elbHours=elb_hours, elbDataProcessedGb=elb_data_processed_gb)
+        #args = {'region':region,'elbHours':elb_hours,'elbDataProcessedGb':elb_data_processed_gb}
+        elb_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, elbHours=elb_hours,elbDataProcessedGb=elb_data_processed_gb))
         if 'pricingRecords' in elb_cost:
             pricing_records.extend(elb_cost['pricingRecords'])
             ec2Cost = ec2Cost + elb_cost['totalCost']
@@ -140,7 +141,7 @@ def handler(event, context):
 
     #Calculate EC2 compute time cost
     for instance_type in all_instance_types:
-        ec2_compute_cost = ec2pricing.calculate(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD])
+        ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
         if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
         ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
 
@@ -151,7 +152,8 @@ def handler(event, context):
     for k in ebs_storage_dict.keys():
         if k == 'io1': pricing_piops = piops
         else: pricing_piops = 0
-        ebs_storage_cost = ec2pricing.calculate(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops)
+
+        ebs_storage_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops))
         if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
         ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
 
@@ -159,7 +161,7 @@ def handler(event, context):
     snapshot_gb_month = get_total_snapshot_storage(tagkey, tagvalue)
     ebs_snapshot_cost = {}
     if snapshot_gb_month:
-      ebs_snapshot_cost = ec2pricing.calculate(region=region, ebsSnapshotGbMonth=snapshot_gb_month)
+      ebs_snapshot_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsSnapshotGbMonth=snapshot_gb_month))
       if 'pricingRecords' in ebs_snapshot_cost: pricing_records.extend(ebs_snapshot_cost['pricingRecords'])
       ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
     else:
@@ -177,7 +179,9 @@ def handler(event, context):
     all_db_instance_dict = {}
     all_db_instance_dict.update(db_instances)
     all_db_instance_types = get_db_instance_type_count(all_db_instance_dict)
-    log.info("All DB instance types:{}".format(all_db_instance_types))
+    all_db_storage_types = get_db_storage_type_count(all_db_instance_dict)
+    #log.info("All DB instance types:{}".format(all_db_instance_types))
+    #log.info("all_db_instance_dict: {}".format(all_db_instance_dict))
 
     #Calculate RDS instance time cost
     rds_instance_cost = {}
@@ -186,12 +190,26 @@ def handler(event, context):
         engine = db_instance_type.split("|")[1]
         licenseModel= db_instance_type.split("|")[2]
         multiAz= bool(int(db_instance_type.split("|")[3]))
-        rds_instance_cost = rdspricing.calculate(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
-                                        engine=engine, licenseModel=licenseModel,
-                                        instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD])
+        rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
+                                        engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
 
         if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
         rdsCost = rdsCost + rds_instance_cost['totalCost']
+
+    #Calculate RDS storage cost
+    rds_storage_cost = {}
+    for storage_key in all_db_storage_types.keys():
+        storageType = storage_key.split("|")[0]
+        multiAz = bool(int(storage_key.split("|")[1]))
+        storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
+        iops = all_db_storage_types[storage_key]['Iops']
+        rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
+                                                                        multiAz=multiAz, storageGbMonth=storageGbMonth,
+                                                                        iops=iops))
+
+        if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
+        rdsCost = rdsCost + rds_storage_cost['totalCost']
+
 
 
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
@@ -387,7 +405,7 @@ def get_instance_type_count(instance_dict):
 def get_db_instance_type_count(db_instance_dict):
     result = {}
     for key in db_instance_dict:
-        #key format: db-instance-class|engine|license-model
+        #key format: db-instance-class|engine|license-model|multi-az
         multiAz = 0
         if db_instance_dict[key]['MultiAZ']==True:multiAz=1
         db_instance_key = db_instance_dict[key]['DBInstanceClass']+"|"+\
@@ -399,6 +417,33 @@ def get_db_instance_type_count(db_instance_dict):
         else:
             result[db_instance_key] = 1
     return result
+
+
+def get_db_storage_type_count(db_instance_dict):
+    result = {}
+    for key in db_instance_dict:
+        #key format: db-storage-type|allocated-storage|iops|multi-az
+        multiAz = 0
+        #print("db_instance_dict[{}]".format(db_instance_dict[key]))
+        if db_instance_dict[key]['MultiAZ']==True:multiAz=1
+        db_storage_key = db_instance_dict[key]['StorageType']+"|"+\
+                          str(multiAz)
+
+        if 'Iops' not in db_instance_dict[key]: db_instance_dict[key]['Iops'] = 0
+
+        if db_storage_key in result:
+            result[db_storage_key]['Iops'] += db_instance_dict[key]['Iops']
+            result[db_storage_key]['AllocatedStorage'] += db_instance_dict[key]['AllocatedStorage']
+        else:
+            result[db_storage_key] = {}
+            result[db_storage_key]['Iops'] = db_instance_dict[key]['Iops']
+            result[db_storage_key]['AllocatedStorage'] = db_instance_dict[key]['AllocatedStorage']
+
+        #print ("Storage composite key:[{}]".format(db_storage_key))
+
+
+    return result
+
 
 
 

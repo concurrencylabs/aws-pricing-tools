@@ -114,7 +114,7 @@ It's useful for making sure the code is evaluating all existing combinations tha
 def get_distinct_product_attributes(price_data, attribute, **kwargs):
   distinctattributes = []
   region = kwargs['region']
-  #print("products: "+json.dumps(get_products(price_data),sort_keys=True,indent=4, separators=(',', ': ')))  
+  #print("products: "+json.dumps(get_products(price_data),sort_keys=True,indent=4, separators=(',', ': ')))
   for p in get_products(price_data):
     region_attr_key = get_region_attr_key(p)
     if region_attr_key in p['attributes']:
