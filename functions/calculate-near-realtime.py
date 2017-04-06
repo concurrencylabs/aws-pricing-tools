@@ -2,8 +2,9 @@ from __future__ import print_function
 
 import datetime
 import json
-import logging
+import logging, os, sys
 import boto3
+from botocore.exceptions import ClientError
 import pricecalculator.ec2.pricing as ec2pricing
 import pricecalculator.rds.pricing as rdspricing
 import pricecalculator.awslambda.pricing as lambdapricing
@@ -19,6 +20,11 @@ rdsclient = None
 elbclient = None
 lambdaclient = None
 cwclient = None
+
+__location__ = os.path.dirname(os.path.realpath(__file__))
+os.path.split(__location__)[0]
+site_pkgs = os.path.join(os.path.split(__location__)[0], "lib", "python2.7", "site-packages")
+sys.path.append(site_pkgs)
 
 
 #_/_/_/_/_/_/ default_values - start _/_/_/_/_/_/
@@ -58,11 +64,10 @@ CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 Limitations (features not yet available):
     - Calculates all NetworkOut metrics as 'out to the internet', since there is no way to know in near real-time
       with CloudWath metrics the bytes destination. This would only be possible using VPC Flow Logs, which are not
-      near real-time.
+      available in near real-time.
 """
 
 def handler(event, context):
-
     log.info("Received event {}".format(json.dumps(event)))
 
     init_clients(context)
@@ -91,7 +96,7 @@ def handler(event, context):
     lambdafunctions = []
     if 'functions' in event:
       lambdafunctions = event['functions']
-      #functions will have the following JSON format: "functions":[{"name":"my-function-name"},{"name":"my-other-function-name"}]
+      #functions will have the following JSON format: "functions":[{"name":"my-function-name","qualifier":"DEV"},{"name":"my-other-function-name"}]
 
 
     start, end = calculate_time_range()
@@ -125,12 +130,10 @@ def handler(event, context):
 
     #Calculate ELB cost
     if elb_hours:
-        #args = {'region':region,'elbHours':elb_hours,'elbDataProcessedGb':elb_data_processed_gb}
         elb_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, elbHours=elb_hours,elbDataProcessedGb=elb_data_processed_gb))
         if 'pricingRecords' in elb_cost:
             pricing_records.extend(elb_cost['pricingRecords'])
             ec2Cost = ec2Cost + elb_cost['totalCost']
-
 
     #Calculate EC2 compute time for ALL instance types found (subscribed to ELB or not) - group by instance types
     all_instance_dict = {}
@@ -180,8 +183,6 @@ def handler(event, context):
     all_db_instance_dict.update(db_instances)
     all_db_instance_types = get_db_instance_type_count(all_db_instance_dict)
     all_db_storage_types = get_db_storage_type_count(all_db_instance_dict)
-    #log.info("All DB instance types:{}".format(all_db_instance_types))
-    #log.info("all_db_instance_dict: {}".format(all_db_instance_dict))
 
     #Calculate RDS instance time cost
     rds_instance_cost = {}
@@ -210,8 +211,6 @@ def handler(event, context):
         if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
         rdsCost = rdsCost + rds_storage_cost['totalCost']
 
-
-
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
     #RDS Data Transfer - ignores transfer between AZs
 
@@ -220,21 +219,29 @@ def handler(event, context):
     for func in lambdafunctions:
       executions = calculate_lambda_executions(start, end, func)
       avgduration = calculate_lambda_duration(start, end, func)
-      fname = ''
+      funcname = ''
       qualifier = ''
-      if 'name' in func: fname = func['name']
-      if 'qualifier' in func: qualifier = func['qualifier']
-      memory = get_lambda_memory(fname,qualifier)
+      fullname = ''
+      if 'name' in func:
+          funcname = func['name']
+          fullname = funcname
+      if 'qualifier' in func:
+          qualifier = func['qualifier']
+          fullname += ":"+qualifier
+      memory = get_lambda_memory(funcname,qualifier)
       log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(func['name'],executions,memory, avgduration))
-      #Note we're sending data transfer as 0, since we don't have a way to calculate it based on CW metrics
-      lambdapdim = data.LambdaPriceDimension(region=region, request_count=executions*calculate_forecast_factor(),
-                                        avg_duration_ms=avgduration, memory_mb=memory, data_tranfer_out_internet_gb=0,
-                                        data_transfer_out_intra_region_gb=0, data_transfer_out_inter_region_gb=0,
-                                        to_region='')
-      lambda_func_cost = lambdapricing.calculate(lambdapdim)
-      if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
-      lambdaCost = lambdaCost + lambda_func_cost['totalCost']
-      put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fname)
+      if executions and avgduration:
+          #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
+          lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
+                                            avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
+                                            dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
+          lambda_func_cost = lambdapricing.calculate(lambdapdim)
+          if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
+          lambdaCost = lambdaCost + lambda_func_cost['totalCost']
+
+          put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+      else:
+          log.info("Skipping pricing calculation for function [{}] - qualifier [{}] due to lack of executions in [{}-minute] time window".format(fullname, qualifier, METRIC_WINDOW))
 
 
     #Do this after all calculations for all supported services have concluded
@@ -266,9 +273,8 @@ def handler(event, context):
 #TODO: add support for EBS optimized
 #TODO: add support for EIP
 #TODO: add support for EC2 operating systems other than Linux
-#TODO: add support for ALL instance types
 #TODO: calculate monthly hours based on the current month, instead of assuming 720
-#TODO: add support for dynamic forecast period (1 hour, 1 day, 1 month, etc.)
+#TODO: add support for different forecast periods (1 hour, 1 day, 1 month, etc.)
 #TODO: add support for Spot and Reserved. Function only supports On-demand instances at the time
 
 
@@ -290,8 +296,6 @@ def put_cw_metric_data(timestamp, cost, service, tagkey, tagvalue):
             }
         ]
     )
-
-
 
 
 
@@ -372,10 +376,7 @@ def get_db_instances_by_tag(tagkey, tagvalue):
                     if t['Key'] == tagkey and t['Value'] == tagvalue:
                         result[d['DbiResourceId']]=d
 
-    #print ("Found DB instances by tag: ["+str(result)+"]")
     return result
-
-
 
 
 
@@ -537,6 +538,7 @@ def calculate_lambda_executions(start, end, func):
     for datapoint in invocations['Datapoints']:
       if 'Sum' in datapoint: result = result + datapoint['Sum']
 
+    log.debug("calculate_lambda_executions: [{}]".format(result))
     return result
 
 
@@ -561,22 +563,23 @@ def calculate_lambda_duration(start, end, func):
 
     if count: result = total / count
 
+    log.debug("calculate_lambda_duration: [{}]".format(result))
+
     return result
-
-
-
-
 
 
 def get_lambda_memory(functionname, qualifier):
     result = 0
-    #TODO: handle case where function does not exist
     args = {}
     if qualifier: args = {'FunctionName':functionname,'Qualifier':qualifier}
     else: args = {'FunctionName':functionname}
-    response = lambdaclient.get_function_configuration(**args)
-    if 'MemorySize' in response:
-        result = response['MemorySize']
+    try:
+        response = lambdaclient.get_function_configuration(**args)
+        if 'MemorySize' in response:
+            result = response['MemorySize']
+
+    except ClientError as e:
+        log.error("{}".format(e))
 
     return result
 
@@ -593,9 +596,8 @@ def calculate_time_range():
 
 def calculate_forecast_factor():
     result = (60 / METRIC_WINDOW ) * HOURS_DICT[DEFAULT_FORECAST_PERIOD]
-    print("forecast factor:["+str(result)+"]")
+    log.debug("Forecast factor:["+str(result)+"]")
     return result
-
 
 
 def get_ec2_instances(registered, all):

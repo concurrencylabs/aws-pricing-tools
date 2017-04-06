@@ -16,20 +16,36 @@ https://www.concurrencylabs.com/blog/aws-pricing-lambda-realtime-calculation-fun
 
 The code is structured in the following way:
 
-**pricecalculator**. The modules in this package interact directly with the AWS Price List API.
+**pricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
 They take price dimension parameters as inputs and return results in JSON format. This package
 is called by Lambda functions or other Python scripts.
 
-**functions**. This is where our Lambda functions live. Functions are created using the Serverless framework.
+**functions**. This is where our Lambda functions live. Functions are packaged using the Serverless framework.
 
-Available functions:
 
-* calculate-near-realtime. This function is called by a schedule configured using CloudWatch Events. 
-The function receives a JSON object configured in the schedule. The JSON object has the format ```{"tag":{"key":"mykey","value":"myvalue"}}```.
-The function finds EC2 resources with the corresponding tag, gets current usage using CloudWatch metrics,
+### Available Lambda functions:
+
+**calculate-near-realtime**
+This function is called by a schedule configured using CloudWatch Events. 
+The function receives a JSON object configured in the schedule. The JSON object supports two formats:
+
+1. Tag-based: ```{"tag":{"key":"mykey","value":"myvalue"}}```.
+The function finds resources with the corresponding tag, gets current usage using CloudWatch metrics,
 projects usage into a longer time period (i.e. a month), calls pricecalculator to calculate price 
-and puts results in CloudWatch metrics.
-For Lambda pricing calculations, the JSON object configured in the CloudWatch Events schedule must have the following format ```{"functions":[{"name":"my-function-name"}]}```
+and puts results in CloudWatch metrics under the namespace ```ConcurrencyLabs/Pricing/NearRealTimeForecast```. Supported services are EC2, EBS, ELB and RDS. Not all price
+dimensions are supported for all services, though.
+
+2. Lambda functions: This function can also calculates pricing for other Lambda functions. For pricing calculations on Lambda functions,
+the JSON object configured in the CloudWatch Events schedule must have the following format ```{"functions":[{"name":"my-function-name"},{"name":"my-other-function-name","qualifier":"<DEV|TEST|PROD>"}]}```
+Ideally all calculations would be done based on tags, but since Lambda doesn't support tags as of now, in order to calculate
+pricing for Lambda functions we have to explicitly configure the CloudWatch event JSON using a "functions" element.
+
+You can combine tag-based and function-based JSON in the same CloudWatch Events schedule. Or use a different
+event, it's up to you. Actually, you can configure as many events as you want, each one with a 
+different tag or function name, or a single event with all the tags and function names. Just
+be aware that you might reach function timeout if you include too many elements in a single
+Lambda function execution.
+
 
 
 **Rules:**
@@ -136,6 +152,13 @@ the function calls EC2 and CloudWatch APIs. This is why we need Boto 3.
 
 ```
 pip install boto3
+```
+
+
+### Install tinydb
+
+```
+pip install tinydb
 ```
 
 

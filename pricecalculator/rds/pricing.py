@@ -1,15 +1,28 @@
+import os, sys
 import json
 import logging
-import os, sys
 from ..common import consts, phelper
-from ..common.errors import ValidationError
-from ..common.data import PricingResult, PricingRecord
+from ..common.data import PricingResult
+import tinydb
 
 log = logging.getLogger()
 
 
 def calculate(pdim):
+  ts = phelper.Timestamp()
+  ts.start('totalCalculation')
+
   log.info("Calculating RDS pricing with the following inputs: {}".format(str(pdim.__dict__)))
+  #print("Calculating RDS pricing with the following inputs: {}".format(str(pdim.__dict__)))
+
+
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(pdim.region))
+  cost = 0
+  pricing_records = []
+
+  awsPriceListApiVersion = indexMetadata['Version']
+  priceQuery = tinydb.Query()
+
 
   skuEngine = ''
   skuEngineEdition = ''
@@ -20,110 +33,86 @@ def calculate(pdim):
     skuEngineEdition = consts.RDS_ENGINE_MAP[pdim.engine]['edition']
     skuLicenseModel = consts.RDS_LICENSE_MODEL_MAP[pdim.licenseModel]
 
-  __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-  index_file = open(os.path.join(__location__, 'index.json')).read();
-  price_data = json.loads(index_file)
-  awsPriceListApiVersion = price_data['version']
+  #TODO: add support for Reserved
+  #DB Instance
+  if pdim.instanceHours:
+    instanceDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATABASE_INSTANCE)]
+    query = ((priceQuery['Product Family'] == consts.PRODUCT_FAMILY_DATABASE_INSTANCE) &
+            (priceQuery['Instance Type'] == pdim.dbInstanceClass) &
+            (priceQuery['Database Engine'] == skuEngine) &
+            (priceQuery['Database Edition'] == skuEngineEdition) &
+            (priceQuery['License Model'] == skuLicenseModel) &
+            (priceQuery['Deployment Option'] == pdim.deploymentOption))
 
-  cost = 0
-  pricing_records = []
-  skus = phelper.get_skus(price_data, region=pdim.region)
-  #print("SKUs to evaluate:["+str(len(skus))+"]")
-  #print("size of price_data:["+str(sys.getsizeof(price_data))+"] - size of skus:["+ str(sys.getsizeof(skus))+"]")
-  #phelper.get_distinct_product_attributes(price_data, 'usagetype',region=pdim.region)
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, instanceDb, query, pdim.instanceHours, pricing_records, cost)
 
 
-  for sku in skus:
-    service = consts.SERVICE_RDS
+  #Reserved
 
-    sku_data = price_data['products'][sku]
-    #TODO: add support for Reserved
-    term_data = phelper.get_terms(price_data, [sku], type='OnDemand')
-    pd = phelper.get_price_dimensions(term_data)
+  #Data Transfer
+  #To internet
+  if pdim.dataTransferOutInternetGb:
+    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+    query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
+            (priceQuery['To Location'] == 'External') &
+            (priceQuery['Transfer Type'] == 'AWS Outbound'))
 
-    for p in pd:
-      amt = 0
-      usageUnits = 0
-      billableBand = 0
-      pricePerUnit = float(p['pricePerUnit']['USD'])
-      #DB Instance
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DATABASE_INSTANCE:
-        usageUnits = pdim.instanceHours
-        dbMatch = False
-        if 'databaseEdition' in sku_data['attributes']:
-          if pdim.dbInstanceClass == sku_data['attributes']['instanceType'] \
-                and skuEngine == sku_data['attributes']['databaseEngine'] \
-                and skuEngineEdition == sku_data['attributes']['databaseEdition']\
-                and skuLicenseModel == sku_data['attributes']['licenseModel']:
-            dbMatch = True
-        else:
-          if pdim.dbInstanceClass == sku_data['attributes']['instanceType'] \
-                and skuEngine == sku_data['attributes']['databaseEngine'] \
-                and skuLicenseModel == sku_data['attributes']['licenseModel']:
-            dbMatch = True
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
 
-        if dbMatch:
-          #Multi/Single AZ
-          if pdim.deploymentOption == sku_data['attributes']['deploymentOption']:
-            amt = pricePerUnit * float(usageUnits)
 
-      #Reserved
+  #Inter-regional data transfer - to other AWS regions
+  if pdim.dataTransferOutInterRegionGb:
+    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+    query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
+            (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]) &
+            (priceQuery['Transfer Type'] == 'InterRegion Outbound'))
 
-      #Data Transfer
-      """
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DATA_TRANSFER:
-        billableBand = 0
-        #To internet            
-        if internetDataTransferOutGb and sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER and sku_data['attributes']['toLocation'] == 'External' and sku_data['attributes']['transferType'] == 'AWS Outbound':
-          billableBand = phelper.getBillableBand(p, internetDataTransferOutGb)
-          amt = pricePerUnit * billableBand
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
-        #Inter-regional data transfer - to other AWS regions
-        if interRegionDataTransferGb and sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER and sku_data['attributes']['transferType'] == 'InterRegion Outbound':
-          usageUnits = interRegionDataTransferGb
-          amt = pricePerUnit * usageUnits
-      """
 
-        
-      #Storage (magnetic, SSD, PIOPS)
-      #TODO: PriceList API doesn't have records for "General Purpose - Aurora" in multi-az deployment
-      if pdim.storageGbMonth and sku_data['productFamily'] == consts.PRODUCT_FAMILY_DB_STORAGE \
-              and sku_data['attributes']['volumeType'] == pdim.volumeType\
-              and sku_data['attributes']['deploymentOption'] == pdim.deploymentOption:
-        usageUnits = pdim.storageGbMonth
+  #Ohio is the only region where AWS has published data for storage, snapshots and pIops
+  #TODO: Implement for all product families once AWS publishes data for all regions
+
+  """
+  #Storage (magnetic, SSD, PIOPS)
+  #TODO: PriceList API doesn't have records for "General Purpose - Aurora" in multi-az deployment
+  if pdim.storageGbMonth and sku_data['productFamily'] == consts.PRODUCT_FAMILY_DB_STORAGE \
+          and sku_data['attributes']['volumeType'] == pdim.volumeType\
+          and sku_data['attributes']['deploymentOption'] == pdim.deploymentOption:
+    usageUnits = pdim.storageGbMonth
+    amt = pricePerUnit * float(usageUnits)
+
+  #Provisioned IOPS
+  #TODO: add support for SQL Server Multi-AZ mirror
+  #TODO: exclude Aurora, since Aurora only pays for consumed I/O, not IOPS
+  if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DB_PIOPS:
+    usageUnits = pdim.iops
+    if 'group' in sku_data['attributes']:
+      if sku_data['attributes']['group'] == 'RDS-PIOPS' and sku_data['attributes']['deploymentOption'] == pdim.deploymentOption:
         amt = pricePerUnit * float(usageUnits)
 
-      #Provisioned IOPS
-      #TODO: add support for SQL Server Multi-AZ mirror
-      #TODO: exclude Aurora, since Aurora only pays for consumed I/O, not IOPS
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DB_PIOPS:
-        usageUnits = pdim.iops
-        if 'group' in sku_data['attributes']:
-          if sku_data['attributes']['group'] == 'RDS-PIOPS' and sku_data['attributes']['deploymentOption'] == pdim.deploymentOption:
-            amt = pricePerUnit * float(usageUnits)
-
-      #Consumed IOPS (I/O rate) - only applicable for Aurora
-      if skuEngine == consts.RDS_DB_ENGINE_AURORA:
-        if 'group' in sku_data['attributes']:
-          if sku_data['attributes']['group'] == 'RDS I/O Operation':
-            usageUnits = pdim.ioRate
-            amt = pricePerUnit * float(usageUnits)
+  #Consumed IOPS (I/O rate) - only applicable for Aurora
+  if skuEngine == consts.RDS_DB_ENGINE_AURORA:
+    if 'group' in sku_data['attributes']:
+      if sku_data['attributes']['group'] == 'RDS I/O Operation':
+        usageUnits = pdim.ioRate
+        amt = pricePerUnit * float(usageUnits)
 
 
-      #Backup Storage
-      """
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SNAPSHOT:
-        service = consts.SERVICE_EBS
-        if 'EBS:SnapshotUsage' in sku_data['attributes']['usagetype']: usageUnits = ebsSnapshotGbMonth
-        amt = pricePerUnit * usageUnits
-      """
+  #Backup Storage
+  if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SNAPSHOT:
+    service = consts.SERVICE_EBS
+    if 'EBS:SnapshotUsage' in sku_data['attributes']['usagetype']: usageUnits = ebsSnapshotGbMonth
+    amt = pricePerUnit * usageUnits
 
-      if amt > 0:
-        cost = cost + amt
-        if billableBand > 0: usageUnits = billableBand
-        pricing_record = PricingRecord(service,round(amt,4),p['description'],pricePerUnit,usageUnits,p['rateCode'])
-        pricing_records.append(vars(pricing_record))
+  if amt > 0:
+    cost = cost + amt
+    if billableBand > 0: usageUnits = billableBand
+    pricing_record = PricingRecord(service,round(amt,4),p['description'],pricePerUnit,usageUnits,p['rateCode'])
+    pricing_records.append(vars(pricing_record))
+  """
 
+  print "Total time to calculate price: [{}]".format(ts.finish('totalCalculation'))
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
   return pricing_result.__dict__

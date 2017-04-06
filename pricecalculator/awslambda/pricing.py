@@ -1,9 +1,9 @@
+
 import json
 import logging
-import os, sys
 from ..common import consts, phelper
-from ..common.errors import ValidationError
-from ..common.data import PricingResult, PricingRecord
+from ..common.data import PricingResult
+import tinydb
 
 log = logging.getLogger()
 
@@ -12,70 +12,58 @@ def calculate(pdim):
 
   log.info("Calculating Lambda pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
-  __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-  index_file = open(os.path.join(__location__, 'index.json')).read();
-  price_data = json.loads(index_file)
-  awsPriceListApiVersion = price_data['version']
+  ts = phelper.Timestamp()
+  ts.start('totalCalculationAwsLambda')
 
-  #usage_types = phelper.get_distinct_product_attributes(price_data, 'usagetype', region=pdim.region)
-  #print "usage_types: [{}]".format(usage_types)
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_LAMBDA, phelper.get_partition_keys(pdim.region))
 
   cost = 0
   pricing_records = []
-  skus = phelper.get_skus(price_data, region=pdim.region)
 
-  for sku in skus:
-    service = consts.SERVICE_LAMBDA
+  awsPriceListApiVersion = indexMetadata['Version']
+  priceQuery = tinydb.Query()
 
-    sku_data = price_data['products'][sku]
-    term_data = phelper.get_terms(price_data, [sku], type='OnDemand')
-    pd = phelper.get_price_dimensions(term_data)
+  #TODO:calculate free-tier (include a flag)
 
-    for p in pd:
-      amt = 0
-      usageUnits = 0
-      billableBand = 0
-      pricePerUnit = 0
+  serverlessDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SERVERLESS)]
 
-      pricePerUnit = float(p['pricePerUnit']['USD'])
+  #Requests
+  if pdim.requestCount:
+    query = ((priceQuery['Group'] == 'AWS-Lambda-Requests'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, serverlessDb, query, pdim.requestCount, pricing_records, cost)
 
-      #TODO:calculate free-tier (include a flag)
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SERVERLESS:
-        #Requests
-        if sku_data['attributes']['group'] == 'AWS-Lambda-Requests':
-          usageUnits = pdim.requestCount
-        #GB-s (aka compute time)
-        if sku_data['attributes']['group'] == 'AWS-Lambda-Duration':
-          usageUnits = pdim.requestCount * (float(pdim.avgDurationMs) / 1000) * (float(pdim.memoryMb) / 1024)
+  #GB-s (aka compute time)
+  if pdim.avgDurationMs:
+    query = ((priceQuery['Group'] == 'AWS-Lambda-Duration'))
+    usageUnits = pdim.requestCount * (float(pdim.avgDurationMs) / 1000) * (float(pdim.memoryMb) / 1024)
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, serverlessDb, query, usageUnits, pricing_records, cost)
 
-        amt = pricePerUnit * float(usageUnits)
+  #Data Transfer
+  dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
 
-      #Data Transfer
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DATA_TRANSFER:
-        billableBand = 0
-        #To internet            
-        if pdim.dataTransferOutInternetGb and phelper.is_data_transfer_out_internet(sku_data):
-          billableBand = phelper.getBillableBand(p, pdim.dataTransferOutInternetGb)
-          amt = pricePerUnit * billableBand
+  #To internet
+  if pdim.dataTransferOutInternetGb:
+    query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
 
-        #Intra-regional data transfer - in/out/between EC2 AZs or using IPs or ELB
-        if pdim.dataTransferOutIntraRegionGb and phelper.is_data_transfer_intraregional(sku_data):
-          usageUnits = pdim.dataTransferOutIntraRegionGb
-          amt = pricePerUnit * usageUnits
+  #Intra-regional data transfer - in/out/between EC2 AZs or using IPs or ELB
+  if pdim.dataTransferOutIntraRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'IntraRegion'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutIntraRegionGb, pricing_records, cost)
 
-        #Inter-regional data transfer - out to other AWS regions
-        if pdim.dataTransferOutInterRegionGb and phelper.is_data_transfer_interregional(sku_data, pdim.toRegion):
-          usageUnits = pdim.dataTransferOutInterRegionGb
-          amt = pricePerUnit * usageUnits
+  #Inter-regional data transfer - out to other AWS regions
+  if pdim.dataTransferOutInterRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'InterRegion Outbound') & (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
 
-      if amt > 0:
-        cost = cost + amt
-        if billableBand > 0: usageUnits = billableBand
-        pricing_record = PricingRecord(service,round(amt,4),p['description'],pricePerUnit,usageUnits,p['rateCode'])
-        pricing_records.append(vars(pricing_record))
+  #TODO:calculate free-tier (include a flag)
+
 
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
+
+  print "Total time to compute: [{}]".format(ts.finish('totalCalculationAwsLambda'))
   return pricing_result.__dict__
 
 
