@@ -1,137 +1,117 @@
+
 import json
 import logging
-import os, sys
 from ..common import consts, phelper
-from ..common.errors import ValidationError
-from ..common.data import ElbPriceDimension, PricingResult, PricingRecord
+from ..common.data import PricingResult
+import tinydb
+
+
 
 log = logging.getLogger()
 
 
 def calculate(pdim):
 
+  ts = phelper.Timestamp()
+  ts.start('totalCalculation')
+
   log.info("Calculating EC2 pricing with the following inputs: {}".format(str(pdim.__dict__)))
+  #print("Calculating EC2 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
-  __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-  index_file = open(os.path.join(__location__, 'index.json')).read();
-  price_data = json.loads(index_file)
-  awsPriceListApiVersion = price_data['version']
-
-  #usage_type = phelper.get_distinct_product_attributes(price_data, 'usagetype', region=pdim.region)
+  ts.start('tinyDbLoad')
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region))
+  ts.finish('tinyDbLoad')
+  print "Time to load DB files: [{}]".format(ts.elapsed('tinyDbLoad'))
 
   cost = 0
   pricing_records = []
-  skus = phelper.get_skus(price_data, region=pdim.region)
 
-  #TODO: Optimize the way we access skus in json file. We are iterating over a large number of SKUs. In the future it would be good to create a DDB table for SKUs
-  #TODO: Exit when all input parameters have been evaluated - avoid iterating unnecessarily through the SKUs
-  for sku in skus:
-    service = consts.SERVICE_EC2
+  awsPriceListApiVersion = indexMetadata['Version']
 
-    sku_data = price_data['products'][sku]
-    #TODO: add support for Reserved and Spot
-    term_data = phelper.get_terms(price_data, [sku], type='OnDemand')
-    pd = phelper.get_price_dimensions(term_data)
+  priceQuery = tinydb.Query()
 
-    for p in pd:
-      amt = 0
-      usageUnits = 0
-      billableBand = 0
-      pricePerUnit = float(p['pricePerUnit']['USD'])
-      #Compute Instance
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_COMPUTE_INSTANCE:
-        usageUnits = pdim.instanceHours
-        if sku_data['attributes']['instanceType'] == pdim.instanceType and sku_data['attributes']['operatingSystem'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]\
-                and sku_data['attributes']['tenancy'] == consts.EC2_TENANCY_SHARED:
-          amt = pricePerUnit * float(usageUnits)
+  #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py
+  #Compute Instance
+  if pdim.instanceHours:
+    computeDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE)]
+    ts.start('tinyDbSearchComputeFile')
+    purchaseOption = ''
+    if pdim.purchaseOption in consts.EC2_PURCHASE_OPTION_MAP:
+      purchaseOption = consts.EC2_PURCHASE_OPTION_MAP[pdim.purchaseOption]
+    query = ((priceQuery['Instance Type'] == pdim.instanceType) &
+            (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
+            (priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &
+            (priceQuery['Pre Installed S/W'] == pdim.preInstalledSoftware) &
+            (priceQuery['License Model'] == consts.EC2_LICENSE_MODEL_MAP[pdim.licenseModel]) &
+            (priceQuery['OfferingClass'] == pdim.offeringClass) &
+            (priceQuery['PurchaseOption'] == purchaseOption ))
 
-      #Data Transfer
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_DATA_TRANSFER:
-        billableBand = 0
-        #To internet            
-        if pdim.dataTransferOutInternetGb and sku_data['attributes']['servicecode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER and sku_data['attributes']['toLocation'] == 'External' and sku_data['attributes']['transferType'] == 'AWS Outbound':
-          billableBand = phelper.getBillableBand(p, pdim.dataTransferOutInternetGb)
-          amt = pricePerUnit * billableBand
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, computeDb, query, pdim.instanceHours, pricing_records, cost)
+    print "Time to search compute:[{}]".format(ts.finish('tinyDbSearchComputeFile'))
 
-        #Intra-regional data transfer - in/out/between EC2 AZs or using EIPs or ELB
-        if pdim.dataTransferOutIntraRegionGb and phelper.is_data_transfer_intraregional(sku_data):
-          usageUnits = pdim.dataTransferOutIntraRegionGb
-          amt = pricePerUnit * usageUnits
+  #Data Transfer
+  dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
 
-        #Inter-regional data transfer - out to other AWS regions
-        if pdim.dataTransferOutInterRegionGb and phelper.is_data_transfer_interregional(sku_data, pdim.toRegion):
-          usageUnits = pdim.dataTransferOutInterRegionGb
-          amt = pricePerUnit * usageUnits
+  #Out to the Internet
+  if pdim.dataTransferOutInternetGb:
+    ts.start('searchDataTransfer')
+    query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
+    print "Time to search EC2 data transfer Out: [{}]".format(ts.finish('searchDataTransfer'))
 
-      #EIP
+  #Intra-regional data transfer - in/out/between EC2 AZs or using EIPs or ELB
+  if pdim.dataTransferOutIntraRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'IntraRegion'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutIntraRegionGb, pricing_records, cost)
 
-      #EBS Storage
-      if pdim.ebsStorageGbMonth and sku_data['productFamily'] == consts.PRODUCT_FAMILY_STORAGE:
-        service = consts.SERVICE_EBS
-        usageUnits = pdim.ebsStorageGbMonth
-        if sku_data['attributes']['storageMedia'] == pdim.storageMedia and sku_data['attributes']['volumeType'] == pdim.volumeType:
-          amt = pricePerUnit * float(usageUnits)
+  #Inter-regional data transfer - out to other AWS regions
+  if pdim.dataTransferOutInterRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'InterRegion Outbound') & (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
-      #System Operation (for IOPS)
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SYSTEM_OPERATION:
-        service = consts.SERVICE_EBS
-        usageUnits = pdim.pIops
-        if sku_data['attributes']['group'] == 'EBS IOPS' :
-          amt = pricePerUnit * float(usageUnits)
+  #EBS Storage
+  if pdim.ebsStorageGbMonth:
+    storageDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_STORAGE)]
+    query = ((priceQuery['Volume Type'] == pdim.volumeType))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, storageDb, query, pdim.ebsStorageGbMonth, pricing_records, cost)
 
-      #Storage Snapshot
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_SNAPSHOT:
-        service = consts.SERVICE_EBS
-        if 'EBS:SnapshotUsage' in sku_data['attributes']['usagetype']: usageUnits = pdim.ebsSnapshotGbMonth
-        amt = pricePerUnit * float(usageUnits)
 
-      #Load Balancer
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_LOAD_BALANCER:
-        service = consts.SERVICE_ELB
-        if 'LoadBalancerUsage' in sku_data['attributes']['usagetype']: usageUnits = pdim.elbHours
-        if 'DataProcessing-Bytes' in sku_data['attributes']['usagetype']: usageUnits = pdim.elbDataProcessedGb
-        amt = pricePerUnit * float(usageUnits)
+  #System Operation (pIOPS)
+  if pdim.volumeType == consts.EBS_VOLUME_TYPE_PIOPS and pdim.pIops:
+    storageDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SYSTEM_OPERATION)]
+    query = ((priceQuery['Group'] == 'EBS IOPS'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, storageDb, query, pdim.pIops, pricing_records, cost)
 
-      #Dedicated Host
-    
 
-      #NAT Gateway
-      
-      #Fee
-      if sku_data['productFamily'] == consts.PRODUCT_FAMILY_FEE:
-        pass
+  #Snapshot Storage
+  if pdim.ebsSnapshotGbMonth:
+    snapshotDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SNAPSHOT)]
+    query = ((priceQuery['usageType'] == 'EBS:SnapshotUsage'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, snapshotDb, query, pdim.ebsSnapshotGbMonth, pricing_records, cost)
 
-      if amt > 0:
-        cost = cost + amt
-        if billableBand > 0: usageUnits = billableBand
-        pricing_record = PricingRecord(service,round(amt,4),p['description'],pricePerUnit,usageUnits,p['rateCode'])
-        pricing_records.append(vars(pricing_record))
+
+  #Load Balancer
+  if pdim.elbHours:
+    elbDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER)]
+    query = ((priceQuery['usageType'] == 'LoadBalancerUsage'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbHours, pricing_records, cost)
+
+  if pdim.elbDataProcessedGb:
+    elbDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER)]
+    query = ((priceQuery['usageType'] == 'DataProcessing-Bytes'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbDataProcessedGb, pricing_records, cost)
+
+
+  #EIP
+  #Dedicated Host
+  #NAT Gateway
+  #Fee
+
 
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
+
+  print "Total time to compute: [{}]".format(ts.finish('totalCalculation'))
   return pricing_result.__dict__
 
 
-"""
-def validate(region, instanceType, operatingSystem, dataOutInternetGbMonth, ebsVolumeType):
-  validation_ok = True
-  validation_message = ""
-
-  if instanceType and instanceType not in consts.SUPPORTED_INSTANCE_TYPES:
-    validation_message = "instance-type must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
-    validation_ok = False
-  if region not in consts.SUPPORTED_REGIONS:
-    validation_message = "region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
-    validation_ok = False
-  if operatingSystem and operatingSystem not in consts.SUPPORTED_EC2_OPERATING_SYSTEMS:
-    validation_message = "operating-system must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)
-    validation_ok = False
-  if ebsVolumeType and ebsVolumeType not in consts.SUPPORTED_EBS_VOLUME_TYPES:
-    validation_message = "ebs-volume-type must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)
-    validation_ok = False
-
-  if not validation_ok:
-      raise ValidationError(validation_message)
-
-  return
-"""

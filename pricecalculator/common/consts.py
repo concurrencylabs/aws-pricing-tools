@@ -39,11 +39,6 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               }
 
 
-
-
-
-
-
 SERVICE_EC2 = 'ec2'
 SERVICE_ELB = 'elb'
 SERVICE_EBS = 'ebs'
@@ -51,16 +46,19 @@ SERVICE_S3 = 's3'
 SERVICE_RDS = 'rds'
 SERVICE_LAMBDA = 'lambda'
 
+
+
 SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS)
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1')
 
-SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large' , 'm1.small' ,
+SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small' ,
                             'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge' ,
                             'm4.large' , 'm4.xlarge' , 'm4.2xlarge' , 'm4.4xlarge' , 'm4.10xlarge' , 'm2.xlarge' ,
-                            'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' , 'r3.large' , 'r3.xlarge' , 'r3.2xlarge' ,
+                            'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
+                            'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge' ,
                             'r3.4xlarge' , 'r3.8xlarge' , 'x1.4xlarge' , 'x1.8xlarge' , 'x1.16xlarge' , 'x1.32xlarge',
                             'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge' , 'hi1.4xlarge' , 'hs1.8xlarge' ,
                             'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge' ,
@@ -73,6 +71,22 @@ SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , '
 SERVICE_INDEX_MAP = {'s3':'AmazonS3','ec2':'AmazonEC2'}
 
 
+
+SCRIPT_TERM_TYPE_ON_DEMAND = 'on-demand'
+SCRIPT_TERM_TYPE_RESERVED = 'reserved'
+
+SUPPORTED_TERM_TYPES = (SCRIPT_TERM_TYPE_ON_DEMAND, SCRIPT_TERM_TYPE_RESERVED)
+
+
+TERM_TYPE_MAP = {SCRIPT_TERM_TYPE_ON_DEMAND:'OnDemand', SCRIPT_TERM_TYPE_RESERVED:'Reserved'}
+
+
+
+
+
+
+
+
 PRODUCT_FAMILY_COMPUTE_INSTANCE = 'Compute Instance'
 PRODUCT_FAMILY_DATABASE_INSTANCE = 'Database Instance'
 PRODUCT_FAMILY_DATA_TRANSFER = 'Data Transfer'
@@ -83,9 +97,14 @@ PRODUCT_FAMILY_SYSTEM_OPERATION = 'System Operation'
 PRODUCT_FAMILY_LOAD_BALANCER = 'Load Balancer'
 PRODUCT_FAMILY_SNAPSHOT = "Storage Snapshot"
 PRODUCT_FAMILY_SERVERLESS = "Serverless"
-
 PRODUCT_FAMILY_DB_STORAGE = "Database Storage"
 PRODUCT_FAMILY_DB_PIOPS = "Provisioned IOPS"
+
+
+SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DATABASE_INSTANCE,PRODUCT_FAMILY_DATA_TRANSFER,PRODUCT_FAMILY_FEE,
+                              PRODUCT_FAMILY_API_REQUEST,PRODUCT_FAMILY_STORAGE, PRODUCT_FAMILY_SYSTEM_OPERATION, PRODUCT_FAMILY_LOAD_BALANCER,
+                              PRODUCT_FAMILY_SNAPSHOT,PRODUCT_FAMILY_SERVERLESS,PRODUCT_FAMILY_DB_STORAGE,PRODUCT_FAMILY_DB_PIOPS)
+
 
 
 INFINITY = 'Inf'
@@ -108,6 +127,10 @@ EC2_TENANCY_SHARED = 'Shared'
 EC2_TENANCY_DEDICATED = 'Dedicated'
 
 
+
+
+
+
 STORAGE_MEDIA_SSD = "SSD-backed"
 STORAGE_MEDIA_HDD = "HDD-backed"
 STORAGE_MEDIA_S3 = "AmazonS3"
@@ -119,7 +142,7 @@ EBS_VOLUME_TYPE_THROUGHPUT_OPTIMIZED = "Throughput Optimized HDD"
 EBS_VOLUME_TYPE_COLD_HDD = "Cold HDD"
 
 #Values that are valid in the calling script (which could be a Lambda function or any Python module)
-#To make things simpler, these are the values that are used in the AWS API
+
 #OS
 SCRIPT_OPERATING_SYSTEM_LINUX = 'linux'
 SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL = 'windowsbyol'
@@ -127,6 +150,12 @@ SCRIPT_OPERATING_SYSTEM_WINDOWS = 'windows'
 SCRIPT_OPERATING_SYSTEM_SUSE = 'suse'
 SCRIPT_OPERATING_SYSTEM_SQL_WEB = 'sqlweb'
 SCRIPT_OPERATING_SYSTEM_RHEL = 'rhel'
+
+#License Model
+SCRIPT_EC2_LICENSE_MODEL_BYOL = 'byol'
+SCRIPT_EC2_LICENSE_MODEL_INCLUDED = 'included'
+SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED = 'none-required'
+
 
 #EBS
 SCRIPT_EBS_VOLUME_TYPE_STANDARD = 'standard'
@@ -136,12 +165,40 @@ SCRIPT_EBS_VOLUME_TYPE_SC1 = 'sc1'
 SCRIPT_EBS_VOLUME_TYPE_ST1 = 'st1'
 
 
+#Reserved Instances
+EC2_OFFERING_CLASS_STANDARD = 'standard'
+EC2_OFFERING_CLASS_CONVERTIBLE = 'convertible'
 
-SUPPORTED_EC2_OPERATING_SYSTEMS = (SCRIPT_OPERATING_SYSTEM_LINUX, 
+SUPPORTED_OFFERING_CLASSES = (EC2_OFFERING_CLASS_STANDARD, EC2_OFFERING_CLASS_CONVERTIBLE)
+
+
+EC2_PURCHASE_OPTION_PARTIAL_UPFRONT = 'partial-upfront'
+EC2_PURCHASE_OPTION_ALL_UPFRONT = 'all-upfront'
+EC2_PURCHASE_OPTION_NO_UPFRONT = 'no-upfront'
+
+EC2_PURCHASE_OPTION_MAP = {EC2_PURCHASE_OPTION_PARTIAL_UPFRONT:'Partial Upfront',
+                           EC2_PURCHASE_OPTION_ALL_UPFRONT: 'All Upfront', EC2_PURCHASE_OPTION_NO_UPFRONT: 'No Upfront'
+                           }
+
+
+
+
+
+SUPPORTED_EC2_OPERATING_SYSTEMS = (SCRIPT_OPERATING_SYSTEM_LINUX,
+                                   SCRIPT_OPERATING_SYSTEM_WINDOWS,
                                    SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL,
                                    SCRIPT_OPERATING_SYSTEM_SUSE,
                                    SCRIPT_OPERATING_SYSTEM_SQL_WEB,
                                    SCRIPT_OPERATING_SYSTEM_RHEL)
+
+
+SUPPORTED_EC2_LICENSE_MODELS = (SCRIPT_EC2_LICENSE_MODEL_BYOL, SCRIPT_EC2_LICENSE_MODEL_INCLUDED, SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED)
+
+EC2_LICENSE_MODEL_MAP = {SCRIPT_EC2_LICENSE_MODEL_BYOL: 'Bring your own license',
+                         SCRIPT_EC2_LICENSE_MODEL_INCLUDED: 'License Included',
+                         SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED: 'No License required'
+                         }
+
 
 EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux', 
                              SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:'Windows BYOL',
@@ -149,6 +206,9 @@ EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux',
                              SCRIPT_OPERATING_SYSTEM_SUSE:'SUSE',
                              SCRIPT_OPERATING_SYSTEM_SQL_WEB:'SQL Web',
                              SCRIPT_OPERATING_SYSTEM_RHEL:'RHEL'}
+
+
+
 
 SUPPORTED_EBS_VOLUME_TYPES = (SCRIPT_EBS_VOLUME_TYPE_STANDARD,
                              SCRIPT_EBS_VOLUME_TYPE_IO1,
@@ -285,21 +345,25 @@ S3_STORAGE_CLASS_GLACIER = 'Archive'
 S3_STORAGE_CLASS_REDUCED_REDUNDANCY = 'Non-Critical Data'
 
 
-SUPPORTED_REQUEST_TYPES = ('GET','POST')
+SUPPORTED_REQUEST_TYPES = ('PUT','COPY','POST','LIST','GET')
 
 SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS = 'STANDARD_IA'
 SCRIPT_STORAGE_CLASS_STANDARD = 'STANDARD'
 SCRIPT_STORAGE_CLASS_GLACIER = 'GLACIER'
 SCRIPT_STORAGE_CLASS_REDUCED_REDUNDANCY = 'REDUCED_REDUNDANCY'
 
-
-
-
-
-
 SUPPORTED_S3_STORAGE_CLASSES = (SCRIPT_STORAGE_CLASS_STANDARD,
                              SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS,
                              SCRIPT_STORAGE_CLASS_GLACIER,
                              SCRIPT_STORAGE_CLASS_REDUCED_REDUNDANCY)
+
+S3_STORAGE_CLASS_MAP = {SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS:S3_STORAGE_CLASS_SIA,
+                        SCRIPT_STORAGE_CLASS_STANDARD:S3_STORAGE_CLASS_STANDARD,
+                        SCRIPT_STORAGE_CLASS_GLACIER:S3_STORAGE_CLASS_GLACIER,
+                        SCRIPT_STORAGE_CLASS_REDUCED_REDUNDANCY:S3_STORAGE_CLASS_REDUCED_REDUNDANCY}
+
+
+
+
 
 

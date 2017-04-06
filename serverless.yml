@@ -32,12 +32,19 @@ package:
     - include/**
     - pip-selfcheck.json
     - pricecalculator/s3
-    - pricecalculator/ec2/index.csv
-    - pricecalculator/rds/index.csv
+    - pricecalculator/data/ec2/index.*
+    - pricecalculator/data/rds/index.*
+    - pricecalculator/data/s3/index.*
+    - pricecalculator/data/lambda/index.*
     - scripts/**
     - test-events/**
     - cloudformation/**
     - readme.txt
+
+  include:
+    - lib/python2.7/site-packages/tinydb/**
+
+
 
 functions:
   nearrealtimepricing:
