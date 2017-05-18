@@ -38,6 +38,26 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'ap-south-1':'Mumbai'
               }
 
+REGION_PREFIX_MAP = {'us-east-1':'',
+              'us-east-2':'USE2-',
+              'us-west-1':'USW1-',
+              'us-west-2':'USW2-',
+              'ca-central-1':'CAN1-',
+              'eu-west-1':'EU-',
+              'eu-west-2':'EUW2-',
+              'eu-central-1':'EUC1-',
+              'ap-northeast-1':'APN1-',
+              'ap-northeast-2':'APN2-',
+              'ap-southeast-1':'APS1-',
+              'ap-southeast-2':'APS2-',
+              'sa-east-1':'SAE1-',
+              'ap-south-1':'APS3-'
+              }
+
+
+
+
+
 
 SERVICE_EC2 = 'ec2'
 SERVICE_ELB = 'elb'
@@ -60,7 +80,9 @@ SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , '
                             'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
                             'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge' ,
                             'r3.4xlarge' , 'r3.8xlarge' , 'x1.4xlarge' , 'x1.8xlarge' , 'x1.16xlarge' , 'x1.32xlarge',
-                            'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge' , 'hi1.4xlarge' , 'hs1.8xlarge' ,
+                            'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge' ,
+                            'i3.large', 'i3.xlarge', 'i3.2xlarge', 'i3.4xlarge', 'i3.8xlarge',
+                            'hi1.4xlarge' , 'hs1.8xlarge' ,
                             'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge' ,
                             'c3.8xlarge' , 'c4.large' , 'c4.xlarge' , 'c4.2xlarge' , 'c4.4xlarge' , 'c4.8xlarge' ,
                             'cc1.4xlarge' , 'cc2.8xlarge' , 'g2.2xlarge' , 'g2.8xlarge' , 'cg1.4xlarge' , 'd2.xlarge',
@@ -110,8 +132,10 @@ SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DA
 INFINITY = 'Inf'
 
 SORT_CRITERIA_REGION = 'region'
+SORT_CRITERIA_OS = 'os'
 SORT_CRITERIA_S3_STORAGE_CLASS = 'storage-class'
 SORT_CRITERIA_TO_REGION = 'to-region'
+SORT_CRITERIA_LAMBDA_MEMORY = 'memory'
 
 
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
@@ -120,7 +144,7 @@ EC2_OPERATING_SYSTEM_LINUX = 'Linux'
 EC2_OPERATING_SYSTEM_BYOL = 'Windows BYOL'
 EC2_OPERATING_SYSTEM_WINDOWS = 'Windows'
 EC2_OPERATING_SYSTEM_SUSE = 'Suse'
-EC2_OPERATING_SYSTEM_SQL_WEB = 'SQL Web'
+#EC2_OPERATING_SYSTEM_SQL_WEB = 'SQL Web'
 EC2_OPERATING_SYSTEM_RHEL = 'RHEL'
 
 EC2_TENANCY_SHARED = 'Shared'
@@ -148,7 +172,7 @@ SCRIPT_OPERATING_SYSTEM_LINUX = 'linux'
 SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL = 'windowsbyol'
 SCRIPT_OPERATING_SYSTEM_WINDOWS = 'windows'
 SCRIPT_OPERATING_SYSTEM_SUSE = 'suse'
-SCRIPT_OPERATING_SYSTEM_SQL_WEB = 'sqlweb'
+#SCRIPT_OPERATING_SYSTEM_SQL_WEB = 'sqlweb'
 SCRIPT_OPERATING_SYSTEM_RHEL = 'rhel'
 
 #License Model
@@ -188,7 +212,7 @@ SUPPORTED_EC2_OPERATING_SYSTEMS = (SCRIPT_OPERATING_SYSTEM_LINUX,
                                    SCRIPT_OPERATING_SYSTEM_WINDOWS,
                                    SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL,
                                    SCRIPT_OPERATING_SYSTEM_SUSE,
-                                   SCRIPT_OPERATING_SYSTEM_SQL_WEB,
+                                   #SCRIPT_OPERATING_SYSTEM_SQL_WEB,
                                    SCRIPT_OPERATING_SYSTEM_RHEL)
 
 
@@ -201,10 +225,10 @@ EC2_LICENSE_MODEL_MAP = {SCRIPT_EC2_LICENSE_MODEL_BYOL: 'Bring your own license'
 
 
 EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux', 
-                             SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:'Windows BYOL',
+                             SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:'Windows',
                              SCRIPT_OPERATING_SYSTEM_WINDOWS:'Windows',
                              SCRIPT_OPERATING_SYSTEM_SUSE:'SUSE',
-                             SCRIPT_OPERATING_SYSTEM_SQL_WEB:'SQL Web',
+                             #SCRIPT_OPERATING_SYSTEM_SQL_WEB:'SQL Web',
                              SCRIPT_OPERATING_SYSTEM_RHEL:'RHEL'}
 
 
@@ -363,7 +387,11 @@ S3_STORAGE_CLASS_MAP = {SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS:S3_STORAGE_CLASS_
                         SCRIPT_STORAGE_CLASS_REDUCED_REDUNDANCY:S3_STORAGE_CLASS_REDUCED_REDUNDANCY}
 
 
+#_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 
+#LAMBDA
+
+LAMBDA_MEM_SIZES = [128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536]
 
 
 

@@ -1,5 +1,4 @@
 from __future__ import print_function
-
 import datetime
 import json
 import logging, os, sys
@@ -20,6 +19,7 @@ rdsclient = None
 elbclient = None
 lambdaclient = None
 cwclient = None
+tagsclient = None
 
 __location__ = os.path.dirname(os.path.realpath(__file__))
 os.path.split(__location__)[0]
@@ -56,6 +56,24 @@ CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL = 'total'
 CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 
 
+SERVICE_EC2 = 'ec2'
+SERVICE_RDS = 'rds'
+SERVICE_ELB = 'elasticloadbalancing'
+SERVICE_LAMBDA = 'lambda'
+
+RESOURCE_LAMBDA_FUNCTION = 'function'
+RESOURCE_ELB = 'loadbalancer'
+RESOURCE_EC2_INSTANCE = 'instance'
+RESOURCE_RDS_DB_INSTANCE = 'db'
+RESOURCE_EBS_VOLUME = 'volume'
+RESOURCE_EBS_SNAPSHOT = 'snapshot'
+
+SERVICE_RESOURCE_MAP = {SERVICE_EC2:[RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT, RESOURCE_EC2_INSTANCE],
+                        SERVICE_RDS:[RESOURCE_RDS_DB_INSTANCE],
+                        SERVICE_LAMBDA:[RESOURCE_LAMBDA_FUNCTION],
+                        SERVICE_ELB:[RESOURCE_ELB]}
+
+
 #_/_/_/_/_/_/ default values - end _/_/_/_/_/_/
 
 
@@ -80,6 +98,8 @@ def handler(event, context):
     totalCost = 0
 
     #First, get the tags we'll be searching for, from the CloudWatch scheduled event
+    #TODO: add support for multiple tags in a single event (beware this could increase function execution time)
+    #TODO: add support for lambda function qualifiers in CW Event.
     tagkey = ""
     tagvalue = ""
     if 'tag' in event:
@@ -87,17 +107,13 @@ def handler(event, context):
       tagvalue = event['tag']['value']
       if tagkey == "" or tagvalue == "":
           log.error("No tags specified, aborting function!")
-          #TODO:return only if there are no functions
           return {}
 
       log.info("Will search resources with the following tag:["+tagkey+"] - value["+tagvalue+"]")
 
-    #Then, let's see if there are any Lambda functions in the input event
-    lambdafunctions = []
-    if 'functions' in event:
-      lambdafunctions = event['functions']
-      #functions will have the following JSON format: "functions":[{"name":"my-function-name","qualifier":"DEV"},{"name":"my-other-function-name"}]
+    resource_manager = ResourceManager(tagkey, tagvalue)
 
+    lambdafunctions = resource_manager.get_resources(SERVICE_LAMBDA, RESOURCE_LAMBDA_FUNCTION)
 
     start, end = calculate_time_range()
 
@@ -106,7 +122,8 @@ def handler(event, context):
     elb_instances = {}
 
     #Get tagged ELB(s) and their registered instances
-    taggedelbs = find_elbs(tagkey, tagvalue)
+    #taggedelbs = find_elbs(tagkey, tagvalue)
+    taggedelbs = resource_manager.get_resource_ids(SERVICE_ELB, RESOURCE_ELB)
     if taggedelbs:
         log.info("Found tagged ELBs:{}".format(taggedelbs))
         elb_hours = len(taggedelbs)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
@@ -126,7 +143,7 @@ def handler(event, context):
     if ec2_instances:
         log.info("Tagged EC2 instances:{}".format(ec2_instances.keys()))
     else:
-        log.info("Didn't find any tagged EC2 instances")
+        log.info("Didn't find any tagged, running EC2 instances")
 
     #Calculate ELB cost
     if elb_hours:
@@ -161,6 +178,8 @@ def handler(event, context):
         ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
 
     #Get total snapshot storage
+    #Will remove this functionality, since EBS Snapshot usage cannot be accurately calculated from the EC2 API
+    """
     snapshot_gb_month = get_total_snapshot_storage(tagkey, tagvalue)
     ebs_snapshot_cost = {}
     if snapshot_gb_month:
@@ -169,12 +188,14 @@ def handler(event, context):
       ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
     else:
       log.info("Didn't find any tagged EBS snapshots")
+    """
 
 
     #Get tagged RDS DB instances
-    db_instances = get_db_instances_by_tag(tagkey, tagvalue)
+    #db_instances = get_db_instances_by_tag(tagkey, tagvalue)
+    db_instances = get_db_instances_by_tag(resource_manager.get_resource_ids(SERVICE_RDS, RESOURCE_RDS_DB_INSTANCE))
     if db_instances:
-        log.info("Tagged DB instances:{}".format(db_instances.keys()))
+        log.info("Found the following tagged DB instances:{}".format(db_instances.keys()))
     else:
         log.info("Didn't find any tagged DB instances")
 
@@ -191,6 +212,7 @@ def handler(event, context):
         engine = db_instance_type.split("|")[1]
         licenseModel= db_instance_type.split("|")[2]
         multiAz= bool(int(db_instance_type.split("|")[3]))
+        log.info("Calculating RDS DB Instance compute time")
         rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
                                         engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
 
@@ -204,6 +226,7 @@ def handler(event, context):
         multiAz = bool(int(storage_key.split("|")[1]))
         storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
         iops = all_db_storage_types[storage_key]['Iops']
+        log.info("Calculating RDS DB Instance Storage")
         rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
                                                                         multiAz=multiAz, storageGbMonth=storageGbMonth,
                                                                         iops=iops))
@@ -212,8 +235,6 @@ def handler(event, context):
         rdsCost = rdsCost + rds_storage_cost['totalCost']
 
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
-    #RDS Data Transfer - ignores transfer between AZs
-
 
     #Lambda functions
     for func in lambdafunctions:
@@ -222,14 +243,13 @@ def handler(event, context):
       funcname = ''
       qualifier = ''
       fullname = ''
-      if 'name' in func:
-          funcname = func['name']
-          fullname = funcname
-      if 'qualifier' in func:
-          qualifier = func['qualifier']
-          fullname += ":"+qualifier
+      funcname = func.id
+      fullname = funcname
+      #if 'qualifier' in func:
+      #    qualifier = func['qualifier']
+      #    fullname += ":"+qualifier
       memory = get_lambda_memory(funcname,qualifier)
-      log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(func['name'],executions,memory, avgduration))
+      log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(funcname,executions,memory, avgduration))
       if executions and avgduration:
           #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
           lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
@@ -256,18 +276,16 @@ def handler(event, context):
     if tagkey:
       put_cw_metric_data(end, ec2Cost, CW_METRIC_DIMENSION_SERVICE_NAME_EC2, tagkey, tagvalue)
       put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
+      put_cw_metric_data(end, lambdaCost, CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, tagkey, tagvalue)
       put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
 
-
-    if lambdafunctions:
-      put_cw_metric_data(end, lambdaCost, CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'service' , 'lambda')
 
     log.info (json.dumps(result,sort_keys=False,indent=4))
 
     return result
 
 #TODO: calculate data transfer for instances that are not registered with the ELB
-#TODO:Support different OS for EC2 instances (see how engine and license combinations are calculated for RDS)
+#TODO: Support different OS for EC2 instances (see how engine and license combinations are calculated for RDS)
 #TODO: log the actual AWS resources that are found for the price calculation
 #TODO: add support for detailed metrics fee
 #TODO: add support for EBS optimized
@@ -298,34 +316,6 @@ def put_cw_metric_data(timestamp, cost, service, tagkey, tagvalue):
     )
 
 
-
-def find_elbs(tagkey, tagvalue):
-    result = []
-    #By default, this call supports a page size of 400, which should be enough for most scenarios.
-    elbs = elbclient.describe_load_balancers(LoadBalancerNames=[])
-    all_elb_names = []
-    if 'LoadBalancerDescriptions' in elbs:
-        for e in elbs['LoadBalancerDescriptions']:
-            all_elb_names.append(e['LoadBalancerName'])
-
-        elb_count = len(all_elb_names)
-        partial_elb_names = []
-        for i, elem in enumerate(all_elb_names):
-            partial_elb_names.append(all_elb_names[i])
-            #describe_tags can't take more than 20 ELB names as an input
-            if ((i+1) % 20 == 0) or ((i+1) == elb_count):
-                tag_desc = elbclient.describe_tags(LoadBalancerNames=partial_elb_names)
-                for tg in tag_desc['TagDescriptions']:
-                    tags = tg['Tags']
-                    for t in tags:
-                        if t['Key']==tagkey and t['Value']==tagvalue:
-                            result.append(tg['LoadBalancerName'])
-                            break
-                partial_elb_names = []
-    return result
-
-
-
 def get_elb_instances(elbnames):
     result = {}
     instance_ids = []
@@ -350,7 +340,8 @@ def get_elb_instances(elbnames):
 
 def get_ec2_instances_by_tag(tagkey, tagvalue):
     result = {}
-    response = ec2client.describe_instances(Filters=[{'Name': 'tag:'+tagkey, 'Values':[tagvalue]}])
+    response = ec2client.describe_instances(Filters=[{'Name': 'tag:'+tagkey, 'Values':[tagvalue]},
+                                                     {'Name': 'instance-state-name', 'Values': ['running',]}])
     if 'Reservations' in response:
         reservations = response['Reservations']
         for r in reservations:
@@ -362,20 +353,15 @@ def get_ec2_instances_by_tag(tagkey, tagvalue):
 
 
 
-def get_db_instances_by_tag(tagkey, tagvalue):
+def get_db_instances_by_tag(dbIds):
     result = {}
     #TODO: paginate
-    response = rdsclient.describe_db_instances(Filters=[])#boto doesn't support filter by tags
-    if 'DBInstances' in response:
-        dbInstances = response['DBInstances']
-        for d in dbInstances:
-            resourceName = "arn:aws:rds:"+region+":"+awsaccount+":db:"+d['DBInstanceIdentifier']
-            tags = rdsclient.list_tags_for_resource(ResourceName=resourceName)
-            if 'TagList' in tags:
-                for t in tags['TagList']:
-                    if t['Key'] == tagkey and t['Value'] == tagvalue:
-                        result[d['DbiResourceId']]=d
-
+    if dbIds:
+        response = rdsclient.describe_db_instances(Filters=[{'Name':'db-instance-id','Values':dbIds}])
+        if 'DBInstances' in response:
+            dbInstances = response['DBInstances']
+            for d in dbInstances:
+                result[d['DbiResourceId']]=d
     return result
 
 
@@ -480,7 +466,7 @@ def get_total_snapshot_storage(tagkey, tagvalue):
         for s in snapshots['Snapshots']:
             result = result + s['VolumeSize']
 
-    print("total snapshot size:["+str(result)+"]")
+    #log.info("total snapshot size:["+str(result)+"]")
     return result
 
 
@@ -529,7 +515,8 @@ def calculate_lambda_executions(start, end, func):
     invocations = cwclient.get_metric_statistics(
             Namespace='AWS/Lambda',
             MetricName='Invocations',
-            Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            #Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            Dimensions=[{'Name': 'FunctionName','Value': func.id}],
             StartTime=start,
             EndTime=end,
             Period=60*METRIC_WINDOW,
@@ -548,7 +535,8 @@ def calculate_lambda_duration(start, end, func):
     invocations = cwclient.get_metric_statistics(
             Namespace='AWS/Lambda',
             MetricName='Duration',
-            Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            #Dimensions=[{'Name': 'FunctionName','Value': func['name']}],
+            Dimensions=[{'Name': 'FunctionName','Value': func.id}],
             StartTime=start,
             EndTime=end,
             Period=60*METRIC_WINDOW,
@@ -613,6 +601,7 @@ def init_clients(context):
     global elbclient
     global lambdaclient
     global cwclient
+    global tagsclient
     global region
     global awsaccount
 
@@ -624,6 +613,97 @@ def init_clients(context):
     elbclient = boto3.client('elb',region)
     lambdaclient = boto3.client('lambda',region)
     cwclient = boto3.client('cloudwatch', region)
+    tagsclient = boto3.client('resourcegroupstaggingapi', region)
+
+
+class ResourceManager():
+    def __init__(self, tagkey, tagvalue):
+        self.resources = []
+        self.init_resources(tagkey, tagvalue)
+
+
+    def init_resources(self, tagkey, tagvalue):
+        #TODO: Implement pagination
+        response = tagsclient.get_resources(
+                            TagsPerPage = 500,
+                            TagFilters=[{'Key': tagkey,'Values': [tagvalue]}],
+                            ResourceTypeFilters=self.get_resource_type_filters(SERVICE_RESOURCE_MAP)
+                    )
+
+        if 'ResourceTagMappingList' in response:
+            for r in response['ResourceTagMappingList']:
+                res = self.extract_resource(r['ResourceARN'])
+                if res:
+                    self.resources.append(res)
+                    log.info("Tagged resource:{}".format(res.__dict__))
+
+    #Return a service:resource list in the format the ResourceGroupTagging API expects it
+    def get_resource_type_filters(self, service_resource_map):
+        result = []
+        for s in service_resource_map.keys():
+            for r in service_resource_map[s]: result.append("{}:{}".format(s,r))
+        return result
+
+
+    def extract_resource(self, arn):
+        service = arn.split(":")[2]
+        resourceId = ''
+        #See http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html for different patterns in ARNs
+        for service in ('ec2', 'elasticloadbalancing'):
+            for type in ('instance','volume','snapshot','loadbalancer'):
+                if ':'+service+':' in arn and ':'+type+'/' in arn:
+                    resourceId = arn.split(':'+type+'/')[1]
+                    return self.Resource(service, type, resourceId, arn)
+        for service in ('rds', 'lambda'):
+            for type in ('db', 'function'):
+                if ':'+service+':' in arn and ':'+type+':' in arn:
+                    resourceId = arn.split(':'+type+':')[1]
+                    return self.Resource(service, type, resourceId, arn)
+
+        return None
+
+    def get_resources(self, service, resourceType):
+        result = []
+        if self.resources:
+            for r in self.resources:
+                if r.service == service and r.type == resourceType:
+                    result.append(r)
+        return result
+
+
+    def get_resource_ids(self, service, resourceType):
+        result = []
+        if self.resources:
+            for r in self.resources:
+                if r.service == service and r.type == resourceType:
+                    result.append(r.id)
+        return result
+
+
+
+
+    class Resource():
+        def __init__(self, service, type, id, arn):
+            self.service = service
+            self.type = type
+            self.id = id
+            self.arn = arn
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

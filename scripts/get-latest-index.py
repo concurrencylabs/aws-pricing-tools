@@ -9,7 +9,7 @@ import pricecalculator.common.phelper as phelper
 
 def main(argv):
 
-  SUPPORTED_SERVICES = ('s3', 'ec2','rds','lambda')
+  SUPPORTED_SERVICES = ('s3', 'ec2','rds','lambda', 'all')
   SUPPORTED_FORMATS = ('json','csv')
   SERVICE_INDEX_MAP = {'s3':'AmazonS3', 'ec2':'AmazonEC2', 'rds':'AmazonRDS','lambda':'AWSLambda'} #TODO:use consts instead
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
@@ -40,7 +40,7 @@ def main(argv):
 
   validation_ok = True
 
-  #TODO: implement a service=all mode
+
   if service not in SUPPORTED_SERVICES:
     validation_ok = False
   if format not in SUPPORTED_FORMATS:
@@ -50,17 +50,23 @@ def main(argv):
     print (help_message)
     sys.exit(2)
 
-  offerIndexUrl = OFFER_INDEX_URL.replace('{serviceIndex}',SERVICE_INDEX_MAP[service]) + format
-  print ('Downloading offerIndexUrl:['+offerIndexUrl+']...')
+  services = []
+  if service == 'all': services = SUPPORTED_SERVICES
+  else: services = [service]
 
-  #TODO: add validation, if data dir doesn't exist, create it
-  filename = "../pricecalculator/data/"+service+"/index."+format
+  for s in services:
+      if s != 'all':
+          offerIndexUrl = OFFER_INDEX_URL.replace('{serviceIndex}',SERVICE_INDEX_MAP[s]) + format
+          print ('Downloading offerIndexUrl:['+offerIndexUrl+']...')
 
-  with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
+          #TODO: add validation, if data dir doesn't exist, create it
+          filename = "../pricecalculator/data/"+s+"/index."+format
 
-  if format == 'csv':
-    remove_metadata(filename)
-    split_index(service)
+          with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
+
+          if format == 'csv':
+            remove_metadata(filename)
+            split_index(s)
 
 
 """
@@ -123,11 +129,6 @@ def split_index(service):
                 indexDict[indexKey].append(row)
             x += 1
 
-    """
-    with open(get_index_file_name(service, 'indexMetadata', 'csv'),'w') as metadatafile:
-        for r in metadata:
-            metadatafile.write(str(row.keys()[0]+","+row.keys()[1])+'\n')
-    """
     #print "metadata: {}".format(metadata)
 
     i = 0
@@ -147,7 +148,6 @@ def split_index(service):
 
 
 def get_index_file_name(service, name, format):
-  #result = '../pricecalculator/'+service+'/data/'+name+'.'+format
   result = '../pricecalculator/data/'+service+'/'+name+'.'+format
   return result
 

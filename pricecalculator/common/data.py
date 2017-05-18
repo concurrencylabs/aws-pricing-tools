@@ -13,7 +13,7 @@ class ElbPriceDimension():
 class S3PriceDimension():
     def __init__(self, **kwargs):
           self.region = ''
-          self.termType = consts.TERM_TYPE_ON_DEMAND
+          self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
           self.storageClass = ''
           self.storageSizeGb = 0
           self.requestType = ''
@@ -77,15 +77,17 @@ class Ec2PriceDimension():
       self.operatingSystem = consts.SCRIPT_OPERATING_SYSTEM_LINUX
       if 'operatingSystem' in kargs: self.operatingSystem = kargs['operatingSystem']
 
-      #TODO: Add support for pre-installed software
+      #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
       self.preInstalledSoftware = 'NA'
 
       #TODO: Add support for different license models
-      self.licenseModel = ''
+      self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS:
           self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_INCLUDED
-      else:
-          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
+      if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:
+          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_BYOL
+
+
 
 
       self.dataTransferOutInternetGb = 0
@@ -165,7 +167,7 @@ class RdsPriceDimension():
       self.region = ''
       if 'region' in kargs: self.region = kargs['region']
 
-      self.termType = consts.TERM_TYPE_ON_DEMAND
+      self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
 
       self.dbInstanceClass = ''
       if 'dbInstanceClass' in kargs: self.dbInstanceClass = kargs['dbInstanceClass']
@@ -258,6 +260,9 @@ class RdsPriceDimension():
 
 class LambdaPriceDimension():
     def __init__(self,**kargs):
+
+        #print("LambdaPriceDimention args:{}".format(kargs))
+
         self.region = ''
         self.region = kargs['region']
 
@@ -273,16 +278,17 @@ class LambdaPriceDimension():
         if 'memoryMb' in kargs: self.memoryMb = kargs['memoryMb']
 
         self.dataTransferOutInternetGb = 0
-        if 'dataTranferOutInternetGb' in kargs: self.dataTransferOutInternetGb = kargs['dataTranferOutInternetGb']
+        if 'dataTransferOutInternetGb' in kargs: self.dataTransferOutInternetGb = kargs['dataTransferOutInternetGb']
 
         self.dataTransferOutIntraRegionGb = 0
-        if  'dataTranferOutIntraRegionGb' in kargs: self.dataTransferOutIntraRegionGb = kargs['dataTranferOutIntraRegionGb']
+        if  'dataTransferOutIntraRegionGb' in kargs: self.dataTransferOutIntraRegionGb = kargs['dataTransferOutIntraRegionGb']
 
         self.dataTransferOutInterRegionGb = 0
-        if 'dataTranferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTranferOutInterRegionGb']
+        if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
 
         self.toRegion = ''
         if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
+
         self.validate()
 
 
@@ -299,7 +305,7 @@ class LambdaPriceDimension():
         if self.requestCount == 0 and (self.avgDurationMs > 0 or self.memoryMb > 0):
             validation_message += "Cannot have value for average duration or memory if requestCount is zero\n"
         if self.dataTransferOutInterRegionGb > 0 and not self.toRegion:
-            validation_message += "Must specify a to-region if you specify data-transfer-out-interregion_gb\n"
+            validation_message += "Must specify a to-region if you specify data-transfer-out-interregion-gb\n"
 
         if validation_message:
             print("Error: [{}]".format(validation_message))
@@ -318,7 +324,7 @@ class PricingResult():
         self.version = "v2.0"
         self.awsPriceListApiVersion = awsPriceListApiVersion
         self.region = region
-        self.totalCost = total_cost
+        self.totalCost = round(total_cost,2)
         self.currency = consts.DEFAULT_CURRENCY
         self.pricingRecords = pricing_records
 
@@ -327,9 +333,6 @@ class PricingRecord():
         usgUnits = round(float(usgUnits),2)
         amt = round(amt,2)
         self.service = service
-        #self.resourceId = resourceId  #leaving for future use
-        #self.periodStart = start
-        #self.periodEnd = end
         self.amount = amt
         self.description = desc
         self.pricePerUnit = pricePerUnit

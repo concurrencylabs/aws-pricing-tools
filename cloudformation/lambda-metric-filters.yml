@@ -1,0 +1,52 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS CloudFormation Template for creating CloudWatch Logs Metric Filters that keep track of memory utilization (and in the future, possibly other data that can be extracted from Lambda output in CW Logs)
+
+Parameters:
+  LambdaFunctionName:
+    Default: ""
+    Description: Name of the Lambda function to monitor
+    Type: String
+
+
+Resources:
+  LambdaMemoryUsed:
+    Properties:
+      FilterPattern: '[reportLabel=REPORT, requestIdLabel="RequestId:",..., maxMemoryUsedValue, maxMemoryUsedMbLabel]'
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - '/aws/lambda/'
+            - Ref: LambdaFunctionName
+      MetricTransformations:
+      - MetricName:
+          Fn::Join:
+            - ''
+            - - 'MemoryUsed-'
+              - Ref: LambdaFunctionName
+        MetricNamespace: ConcurrencyLabs/Lambda/
+        MetricValue: $maxMemoryUsedValue
+    Type: AWS::Logs::MetricFilter
+
+  LambdaMemorySize:
+    Properties:
+      FilterPattern: '[reportLabel=REPORT, requestIdLabel="RequestId:",..., memorySizeValue, memorySizeValueMbLabel, maxLabel, memoryLabel, usedLabel, maxMemoryUsedValue, maxMemoryUsedMbLabel]'
+      LogGroupName:
+        Fn::Join:
+          - ''
+          - - '/aws/lambda/'
+            - Ref: LambdaFunctionName
+      MetricTransformations:
+      - MetricName:
+          Fn::Join:
+            - ''
+            - - 'MemorySize-'
+              - Ref: LambdaFunctionName
+        MetricNamespace: ConcurrencyLabs/Lambda/
+        MetricValue: $memorySizeValue
+    Type: AWS::Logs::MetricFilter
+
+
+
+
+
+

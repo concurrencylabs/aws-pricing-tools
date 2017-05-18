@@ -1,0 +1,4 @@
+tinydb
+numpy
+boto3
+python-lambda-local

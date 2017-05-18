@@ -162,6 +162,7 @@ def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
   return pricingRecords, cost
 
 
+
 class Timestamp():
 
   def __init__(self):
@@ -179,5 +180,4 @@ class Timestamp():
 
   def elapsed(self,event):
     return self.eventdict[event]['elapsed']
-
 

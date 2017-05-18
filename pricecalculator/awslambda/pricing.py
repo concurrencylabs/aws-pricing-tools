@@ -11,6 +11,7 @@ log = logging.getLogger()
 def calculate(pdim):
 
   log.info("Calculating Lambda pricing with the following inputs: {}".format(str(pdim.__dict__)))
+  #print("Calculating Lambda pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
   ts = phelper.Timestamp()
   ts.start('totalCalculationAwsLambda')
@@ -57,13 +58,10 @@ def calculate(pdim):
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
 
-  #TODO:calculate free-tier (include a flag)
-
-
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
-  print "Total time to compute: [{}]".format(ts.finish('totalCalculationAwsLambda'))
+  log.debug("Total time to compute: [{}]".format(ts.finish('totalCalculationAwsLambda')))
   return pricing_result.__dict__
 
 

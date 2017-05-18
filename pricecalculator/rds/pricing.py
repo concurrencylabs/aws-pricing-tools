@@ -33,10 +33,9 @@ def calculate(pdim):
     skuEngineEdition = consts.RDS_ENGINE_MAP[pdim.engine]['edition']
     skuLicenseModel = consts.RDS_LICENSE_MODEL_MAP[pdim.licenseModel]
 
-  #TODO: add support for Reserved
   #DB Instance
   if pdim.instanceHours:
-    instanceDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATABASE_INSTANCE)]
+    instanceDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATABASE_INSTANCE)]
     query = ((priceQuery['Product Family'] == consts.PRODUCT_FAMILY_DATABASE_INSTANCE) &
             (priceQuery['Instance Type'] == pdim.dbInstanceClass) &
             (priceQuery['Database Engine'] == skuEngine) &
@@ -46,13 +45,13 @@ def calculate(pdim):
 
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, instanceDb, query, pdim.instanceHours, pricing_records, cost)
 
-
+  #TODO: add support for Reserved
   #Reserved
 
   #Data Transfer
   #To internet
   if pdim.dataTransferOutInternetGb:
-    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
     query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
             (priceQuery['To Location'] == 'External') &
             (priceQuery['Transfer Type'] == 'AWS Outbound'))
@@ -62,7 +61,7 @@ def calculate(pdim):
 
   #Inter-regional data transfer - to other AWS regions
   if pdim.dataTransferOutInterRegionGb:
-    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], pdim.termType, consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+    dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
     query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
             (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]) &
             (priceQuery['Transfer Type'] == 'InterRegion Outbound'))

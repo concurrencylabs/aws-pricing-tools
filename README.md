@@ -9,9 +9,10 @@ Supported services:
 * RDS
 * Lambda
 
-Visit this URL for more details:
+Visit the following URLs for more details:
 
 https://www.concurrencylabs.com/blog/aws-pricing-lambda-realtime-calculation-function/
+https://www.concurrencylabs.com/blog/aws-lambda-cost-optimization-tools/
 
 
 The code is structured in the following way:
@@ -22,34 +23,26 @@ is called by Lambda functions or other Python scripts.
 
 **functions**. This is where our Lambda functions live. Functions are packaged using the Serverless framework.
 
+**scripts**. Here are some Python scripts to help with management and price optimizations.
+
 
 ### Available Lambda functions:
 
 **calculate-near-realtime**
 This function is called by a schedule configured using CloudWatch Events. 
-The function receives a JSON object configured in the schedule. The JSON object supports two formats:
+The function receives a JSON object configured in the schedule. The JSON object supports the following format:
 
-1. Tag-based: ```{"tag":{"key":"mykey","value":"myvalue"}}```.
+Tag-based: ```{"tag":{"key":"mykey","value":"myvalue"}}```.
 The function finds resources with the corresponding tag, gets current usage using CloudWatch metrics,
-projects usage into a longer time period (i.e. a month), calls pricecalculator to calculate price 
-and puts results in CloudWatch metrics under the namespace ```ConcurrencyLabs/Pricing/NearRealTimeForecast```. Supported services are EC2, EBS, ELB and RDS. Not all price
-dimensions are supported for all services, though.
+projects usage into a longer time period (a month), calls pricecalculator to calculate price 
+and puts results in CloudWatch metrics under the namespace ```ConcurrencyLabs/Pricing/NearRealTimeForecast```. 
+Supported services are EC2, EBS, ELB, RDS and Lambda. Not all price dimensions are supported for all services, though.
 
-2. Lambda functions: This function can also calculates pricing for other Lambda functions. For pricing calculations on Lambda functions,
-the JSON object configured in the CloudWatch Events schedule must have the following format ```{"functions":[{"name":"my-function-name"},{"name":"my-other-function-name","qualifier":"<DEV|TEST|PROD>"}]}```
-Ideally all calculations would be done based on tags, but since Lambda doesn't support tags as of now, in order to calculate
-pricing for Lambda functions we have to explicitly configure the CloudWatch event JSON using a "functions" element.
-
-You can combine tag-based and function-based JSON in the same CloudWatch Events schedule. Or use a different
-event, it's up to you. Actually, you can configure as many events as you want, each one with a 
-different tag or function name, or a single event with all the tags and function names. Just
-be aware that you might reach function timeout if you include too many elements in a single
-Lambda function execution.
-
+You can configure as many CloudWatch Events as you want, each one with a different tag.
 
 
 **Rules:**
-* The function only considers for price calculation those resources that are tagged, except for Lambda functions. For example, if there is an untagged ELB
+* The function only considers for price calculation those resources that are tagged. For example, if there is an untagged ELB
 with tagged EC2 instances, the function will only consider the EC2 instances for the calculation.
 If there is a tagged ELB with untagged EC2 instances, the function will only calculate price
 for the ELB. 
@@ -57,7 +50,6 @@ for the ELB.
 cover a number of combinations that might or might not be suitable to all users of the function. 
 * To keep it simple, if you want a resource to be included in the calculation, then tag it. Otherwise
 leave it untagged.
-* Lambda pricing calculations are based on the function name and not tags. This is because tags are not supported yet for Lambda functions.
 
 
 
@@ -71,6 +63,20 @@ For example: TagKey:stack, TagValue:mywebapp
 Click here to get started:
 
 <a href="https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=near-realtime-pricing-calculator&templateURL=http://s3.amazonaws.com/concurrencylabs-cfn-templates/lambda-near-realtime-pricing/function-plus-schedule.json" target="new"><img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png" alt="Launch Stack"></a> 
+
+
+### Metrics
+
+The function publishes a metric named `EstimatedCharges` to CloudWatch, under namespace `ConcurrencyLabs/Pricing/NearRealTimeForecast` and it uses
+the following dimensions:
+
+* Currency: USD
+* ForecastPeriod: monthly
+* ServiceName: ec2, rds, lambda
+* Tag: mykey=myvalue
+
+
+
 
 
 ### Updating to the latest version using CloudFormation
@@ -129,37 +135,22 @@ folder of your project (i.e. aws-pricing) and from there run:
 source bin/activate
 ```
 
-### Install python-local-lambda
 
-The Serverless framework is a great way to create, configure and deploy projects based on AWS Lambda - 
-as well as other services, such as API Gateway. But you still need to test your
-functions locally before deploying. For a Lambda function using the Python 2.7 runtime, I use <a href="https://pypi.python.org/pypi/python-lambda-local/0.1.2" target="new">python-local-lambda</a>
-
-**python-local-lambda** lets me test my Lambda functions locally using test events in my workstation.
-
+### Install Requirements
 
 From your project root folder, run:
 
 ```
-pip install python-lambda-local
+pip install -r requirements.txt 
 ```
 
+This will install the following dependencies:
 
-### Install Boto 3
+* **python-local-lambda** - lets me test my Lambda functions locally using test events in my workstation.
+* **boto3** - AWS Python SDK to call AWS APIs.
+* **tinydb** - The code in this repo queries the Price List API csv records
+using the tinydb library. 
 
-If you're going to run the Lambda function locally, you need to have the AWS SDK installed, since
-the function calls EC2 and CloudWatch APIs. This is why we need Boto 3.
-
-```
-pip install boto3
-```
-
-
-### Install tinydb
-
-```
-pip install tinydb
-```
 
 
 ### Install the Serverless Framework
@@ -207,8 +198,10 @@ Serverless requires - avoid Administrator access, which is a bad security and op
 
 Make sure you have the following environment variables set:
 
+```
 export AWS_DEFAULT_PROFILE=<your-aws-cli-profile>
 export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
+```
 
 
 Once you have: virtualenv activated, Boto3, Serverless and python-local-lambda installed as well
@@ -231,7 +224,7 @@ change notifications. In order to download the latest index file, go to the "scr
 and run:
 
 ```
-python get-latest-index.py --service=ec2
+python get-latest-index.py --service=all
 ```
 
 Make sure your virtualenv is activated, or that you are running the script using Python 2.7

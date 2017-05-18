@@ -61,7 +61,13 @@
                         "Effect": "Allow",
                         "Action": ["lambda:GetFunctionConfiguration"],
                         "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["tag:getResources", "tag:getTagKeys", "tag:getTagValues"],
+                        "Resource": "*"
                     }
+
                     ]
                   }
                 }]

@@ -82,23 +82,22 @@ def calculate(pdim):
     query = ((priceQuery['Group'] == 'EBS IOPS'))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, storageDb, query, pdim.pIops, pricing_records, cost)
 
-
   #Snapshot Storage
   if pdim.ebsSnapshotGbMonth:
     snapshotDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SNAPSHOT)]
-    query = ((priceQuery['usageType'] == 'EBS:SnapshotUsage'))
+    query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'EBS:SnapshotUsage'))#EBS:SnapshotUsage comes with a prefix in the PriceList API file (i.e. EU-EBS:SnapshotUsage)
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, snapshotDb, query, pdim.ebsSnapshotGbMonth, pricing_records, cost)
-
 
   #Load Balancer
   if pdim.elbHours:
     elbDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER)]
-    query = ((priceQuery['usageType'] == 'LoadBalancerUsage'))
+    #TODO:Add support for LoadBalancing:Application
+    query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'LoadBalancerUsage') & (priceQuery['operation'] == 'LoadBalancing'))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbHours, pricing_records, cost)
 
   if pdim.elbDataProcessedGb:
     elbDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER)]
-    query = ((priceQuery['usageType'] == 'DataProcessing-Bytes'))
+    query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'DataProcessing-Bytes') & (priceQuery['operation'] == 'LoadBalancing'))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbDataProcessedGb, pricing_records, cost)
 
 

@@ -37,7 +37,7 @@ package:
     - pricecalculator/data/s3/index.*
     - pricecalculator/data/lambda/index.*
     - scripts/**
-    - test-events/**
+    - test/**
     - cloudformation/**
     - readme.txt
 
