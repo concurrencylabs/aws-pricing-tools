@@ -15,18 +15,18 @@ export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
 
 ### Get Latest Index
 
-The code in this repo uses a local copy of the the AWS Price List API index file.
-This index file is constantly updated by AWS. Since price accuracy depends
-on having the latest file, we have to make sure we the code is using the
-latest index file. 
+The code needs a local copy of the the AWS Price List API index file. 
+The GitHub repo doesn't come with the index file, therefore you have to
+download it the first time you run a test and every time AWS publishes a new
+Price List API index.
 
-The following script downloads the latest AWS Price List API index and
-does some transformations with it, so the index files can be consumed by
-the price calculator code.  
+In order to download the latest index file, go to the "scripts" folder and run:
 
 ```
 python get-latest-index.py --service=<ec2|rds|lambda|all>
 ```
+
+The script takes a few seconds to execute since some index files are a little heavy (like the EC2 one).
 
 I recommend executing with the option `--service=all` and subscribing to
 the AWS Price List API change notifications.

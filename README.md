@@ -107,6 +107,12 @@ And that's it. CloudFormation will update the function with the latest code.
 ## Install - Manual steps
 
 
+### Clone the repo 
+
+```
+git clone https://github.com/ConcurrenyLabs/aws-pricing-tools aws-pricing-tools
+```
+
 
 ### Create an isolated Python environment using virtualenv
 
@@ -121,11 +127,12 @@ pip install virtualenv
 
 For more details on virtualenv, <a href="https://virtualenv.pypa.io/en/stable/installation/" target="new">click here.</a>
 
-Now, create a Python 2.7 virtual environment where your project will live. If you want to name your project
-aws-pricing, then run:
+Now, create a Python 2.7 virtual environment in the location where you cloned the repo into. If you want to name your project
+aws-pricing-tools, then run (one level up from the dir, use the same local name you used when you cloned
+the repo):
 
 ```
-virtualenv aws-pricing -p python2.7
+virtualenv aws-pricing-tools -p python2.7
 ```
 
 After your environment is created, it's time to activate it. Go to the recently created
@@ -196,7 +203,7 @@ Serverless requires - avoid Administrator access, which is a bad security and op
 
 ### Testing the function locally
 
-Make sure you have the following environment variables set:
+**Set environment variables**
 
 ```
 export AWS_DEFAULT_PROFILE=<your-aws-cli-profile>
@@ -204,28 +211,36 @@ export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
 ```
 
 
-Once you have: virtualenv activated, Boto3, Serverless and python-local-lambda installed as well
-as the code checked out, it's time to run a test.
 
-Update ```test-events/constant-tag.json``` with a tag key/value pair that exists in your AWS account.
-Then run:
+**Download the latest AWS Price List API Index file**
 
-```
-python-lambda-local functions/calculate-near-realtime.py test-events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:<your-region>:<your-aws-account-id>:function:calculate-near-realtime
-```
+The code needs a local copy of the the AWS Price List API index file. 
+The GitHub repo doesn't come with the index file, therefore you have to
+download it the first time you run a test and every time AWS publishes a new
+Price List API index.
 
+Also, this index file is constantly updated by AWS. I recommend subscribing to the AWS Price List API
+change notifications. 
 
-### Updating the AWS Price List API Index file
-
-The code in this repo uses a local copy of the the AWS Price List API index file. This index file
-is constantly updated by AWS. Since price accuracy depends on having the latest file, we
-have to make sure we run our code using the latest index file. I recommend subscribing to the AWS Price List API
-change notifications. In order to download the latest index file, go to the "scripts" folder
-and run:
+In order to download the latest index file, go to the "scripts" folder and run:
 
 ```
 python get-latest-index.py --service=all
 ```
 
-Make sure your virtualenv is activated, or that you are running the script using Python 2.7
+The script takes a few seconds to execute since some index files are a little heavy (like the EC2 one).
+
+Once you have all dependencies installed, virtualenv activated, environment
+variables set and the latest AWS Price List index file, it's time to run a test.
+
+Update ```test/events/constant-tag.json``` with a tag key/value pair that exists in your AWS account.
+
+
+Then run, from the **root** location in the local repo and replace <your-region> and <your-aws-account-id> with actual values:
+
+```
+python-lambda-local functions/calculate-near-realtime.py test/events/constant-tag.json -l lib/ -l . -f handler -t 30 -a arn:aws:lambda:<your-region>:<your-aws-account-id>:function:calculate-near-realtime
+```
+
+
 
