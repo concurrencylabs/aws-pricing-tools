@@ -1,0 +1,9 @@
+# Don't include anything installed into the virtualenv by pip
+.Python
+bin
+lib
+include
+pip-selfcheck.json
+# We don't need compiled Python artifacts in the repo
+*.pyc
+*.pyo
