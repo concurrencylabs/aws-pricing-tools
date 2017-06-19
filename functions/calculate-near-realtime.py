@@ -216,31 +216,37 @@ def handler(event, context):
     #Calculate RDS instance time cost
     rds_instance_cost = {}
     for db_instance_type in all_db_instance_types:
-        dbInstanceClass = db_instance_type.split("|")[0]
-        engine = db_instance_type.split("|")[1]
-        licenseModel= db_instance_type.split("|")[2]
-        multiAz= bool(int(db_instance_type.split("|")[3]))
-        log.info("Calculating RDS DB Instance compute time")
-        rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
-                                        engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
+        try:
+            dbInstanceClass = db_instance_type.split("|")[0]
+            engine = db_instance_type.split("|")[1]
+            licenseModel= db_instance_type.split("|")[2]
+            multiAz= bool(int(db_instance_type.split("|")[3]))
+            log.info("Calculating RDS DB Instance compute time")
+            rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
+                                            engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
 
-        if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
-        rdsCost = rdsCost + rds_instance_cost['totalCost']
+            if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
+            rdsCost = rdsCost + rds_instance_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing RDS instance time costs: %s', failure.message)
 
     #Calculate RDS storage cost
     rds_storage_cost = {}
     for storage_key in all_db_storage_types.keys():
-        storageType = storage_key.split("|")[0]
-        multiAz = bool(int(storage_key.split("|")[1]))
-        storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
-        iops = all_db_storage_types[storage_key]['Iops']
-        log.info("Calculating RDS DB Instance Storage")
-        rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
-                                                                        multiAz=multiAz, storageGbMonth=storageGbMonth,
-                                                                        iops=iops))
+        try:
+            storageType = storage_key.split("|")[0]
+            multiAz = bool(int(storage_key.split("|")[1]))
+            storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
+            iops = all_db_storage_types[storage_key]['Iops']
+            log.info("Calculating RDS DB Instance Storage")
+            rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
+                                                                            multiAz=multiAz, storageGbMonth=storageGbMonth,
+                                                                            iops=iops))
 
-        if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
-        rdsCost = rdsCost + rds_storage_cost['totalCost']
+            if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
+            rdsCost = rdsCost + rds_storage_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing RDS storage costs: %s', failure.message)
 
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
 
