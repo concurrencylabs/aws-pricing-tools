@@ -175,10 +175,12 @@ def handler(event, context):
     for k in ebs_storage_dict.keys():
         if k == 'io1': pricing_piops = piops
         else: pricing_piops = 0
-
-        ebs_storage_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops))
-        if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
-        ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
+        try:
+            ebs_storage_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops))
+            if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
+            ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing ebs storage costs: %s', failure.message)
 
     #Get total snapshot storage
     #Will remove this functionality, since EBS Snapshot usage cannot be accurately calculated from the EC2 API
