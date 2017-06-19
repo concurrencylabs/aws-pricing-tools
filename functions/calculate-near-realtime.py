@@ -265,15 +265,18 @@ def handler(event, context):
       memory = get_lambda_memory(funcname,qualifier)
       log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(funcname,executions,memory, avgduration))
       if executions and avgduration:
-          #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
-          lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
-                                            avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
-                                            dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
-          lambda_func_cost = lambdapricing.calculate(lambdapdim)
-          if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
-          lambdaCost = lambdaCost + lambda_func_cost['totalCost']
+          try:
+              #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
+              lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
+                                                avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
+                                                dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
+              lambda_func_cost = lambdapricing.calculate(lambdapdim)
+              if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
+              lambdaCost = lambdaCost + lambda_func_cost['totalCost']
 
-          put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+              put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+          except Exception as failure:
+              log.error('Error processing Lambda costs: %s', failure.message)
       else:
           log.info("Skipping pricing calculation for function [{}] - qualifier [{}] due to lack of executions in [{}-minute] time window".format(fullname, qualifier, METRIC_WINDOW))
 
