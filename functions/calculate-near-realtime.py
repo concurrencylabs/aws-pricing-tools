@@ -705,22 +705,3 @@ class ResourceManager():
             self.type = type
             self.id = id
             self.arn = arn
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
