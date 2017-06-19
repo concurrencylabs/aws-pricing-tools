@@ -161,9 +161,12 @@ def handler(event, context):
 
     #Calculate EC2 compute time cost
     for instance_type in all_instance_types:
-        ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
-        if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
-        ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
+        try:
+            ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
+            if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
+            ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing %s: %s', instance_type, failure.message)
 
     #Get provisioned storage by volume type, and provisioned IOPS (if applicable)
     ebs_storage_dict, piops = get_storage_by_ebs_type(all_instance_dict)
