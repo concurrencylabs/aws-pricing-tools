@@ -131,8 +131,11 @@ def handler(event, context):
         #Get all EC2 instances registered with each tagged ELB, so we can calculate ELB data processed
         #Registered instances will be used for data processed calculation, and not for instance hours, unless they're tagged.
         if elb_instances:
-          log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
-          elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+            try:
+                log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
+                elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+            except Exception as failure:
+                log.error('Error calculating costs for tagged ELBs: %s', failure.message)
         else:
           log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
     else:
