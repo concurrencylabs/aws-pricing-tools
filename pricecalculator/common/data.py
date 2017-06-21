@@ -126,24 +126,24 @@ class Ec2PriceDimension():
       validation_message = ""
 
       if self.instanceType and self.instanceType not in consts.SUPPORTED_INSTANCE_TYPES:
-        validation_message = "instance-type must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
+        validation_message = "instance-type is "+self.instanceType+", must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
         validation_ok = False
       if self.region not in consts.SUPPORTED_REGIONS:
-        validation_message = "region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+        validation_message = "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
         validation_ok = False
       if self.operatingSystem and self.operatingSystem not in consts.SUPPORTED_EC2_OPERATING_SYSTEMS:
-        validation_message = "operating-system must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)
+        validation_message = "operating-system is "+self.operatingSystem+", must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)
         validation_ok = False
       if self.ebsVolumeType and self.ebsVolumeType not in consts.SUPPORTED_EBS_VOLUME_TYPES:
-        validation_message = "ebs-volume-type must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)
+        validation_message = "ebs-volume-type is "+self.ebsVolumeType+", must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)
         validation_ok = False
       if self.dataTransferOutInterRegionGb and self.toRegion not in consts.SUPPORTED_REGIONS:
-        validation_message = "to-region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+        validation_message = "to-region is "+self.toRegion+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
       if self.dataTransferOutInterRegionGb and self.region == self.toRegion:
         validation_message = "source and destination regions must be different for inter-regional data transfers"
 
       if self.termType not in consts.SUPPORTED_TERM_TYPES:
-          validation_message = "term-type must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
+          validation_message = "term-type is "+self.termType+", must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
 
       if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
           if not self.offeringClass:

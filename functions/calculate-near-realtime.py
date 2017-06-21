@@ -131,8 +131,11 @@ def handler(event, context):
         #Get all EC2 instances registered with each tagged ELB, so we can calculate ELB data processed
         #Registered instances will be used for data processed calculation, and not for instance hours, unless they're tagged.
         if elb_instances:
-          log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
-          elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+            try:
+                log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
+                elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+            except Exception as failure:
+                log.error('Error calculating costs for tagged ELBs: %s', failure.message)
         else:
           log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
     else:
@@ -161,9 +164,12 @@ def handler(event, context):
 
     #Calculate EC2 compute time cost
     for instance_type in all_instance_types:
-        ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
-        if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
-        ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
+        try:
+            ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
+            if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
+            ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing %s: %s', instance_type, failure.message)
 
     #Get provisioned storage by volume type, and provisioned IOPS (if applicable)
     ebs_storage_dict, piops = get_storage_by_ebs_type(all_instance_dict)
@@ -172,10 +178,12 @@ def handler(event, context):
     for k in ebs_storage_dict.keys():
         if k == 'io1': pricing_piops = piops
         else: pricing_piops = 0
-
-        ebs_storage_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops))
-        if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
-        ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
+        try:
+            ebs_storage_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsVolumeType=k, ebsStorageGbMonth=ebs_storage_dict[k], pIops=pricing_piops))
+            if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
+            ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing ebs storage costs: %s', failure.message)
 
     #Get total snapshot storage
     #Will remove this functionality, since EBS Snapshot usage cannot be accurately calculated from the EC2 API
@@ -208,31 +216,37 @@ def handler(event, context):
     #Calculate RDS instance time cost
     rds_instance_cost = {}
     for db_instance_type in all_db_instance_types:
-        dbInstanceClass = db_instance_type.split("|")[0]
-        engine = db_instance_type.split("|")[1]
-        licenseModel= db_instance_type.split("|")[2]
-        multiAz= bool(int(db_instance_type.split("|")[3]))
-        log.info("Calculating RDS DB Instance compute time")
-        rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
-                                        engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
+        try:
+            dbInstanceClass = db_instance_type.split("|")[0]
+            engine = db_instance_type.split("|")[1]
+            licenseModel= db_instance_type.split("|")[2]
+            multiAz= bool(int(db_instance_type.split("|")[3]))
+            log.info("Calculating RDS DB Instance compute time")
+            rds_instance_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, dbInstanceClass=dbInstanceClass, multiAz=multiAz,
+                                            engine=engine, licenseModel=licenseModel, instanceHours=all_db_instance_types[db_instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))
 
-        if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
-        rdsCost = rdsCost + rds_instance_cost['totalCost']
+            if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
+            rdsCost = rdsCost + rds_instance_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing RDS instance time costs: %s', failure.message)
 
     #Calculate RDS storage cost
     rds_storage_cost = {}
     for storage_key in all_db_storage_types.keys():
-        storageType = storage_key.split("|")[0]
-        multiAz = bool(int(storage_key.split("|")[1]))
-        storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
-        iops = all_db_storage_types[storage_key]['Iops']
-        log.info("Calculating RDS DB Instance Storage")
-        rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
-                                                                        multiAz=multiAz, storageGbMonth=storageGbMonth,
-                                                                        iops=iops))
+        try:
+            storageType = storage_key.split("|")[0]
+            multiAz = bool(int(storage_key.split("|")[1]))
+            storageGbMonth = all_db_storage_types[storage_key]['AllocatedStorage']
+            iops = all_db_storage_types[storage_key]['Iops']
+            log.info("Calculating RDS DB Instance Storage")
+            rds_storage_cost = rdspricing.calculate(data.RdsPriceDimension(region=region, storageType=storageType,
+                                                                            multiAz=multiAz, storageGbMonth=storageGbMonth,
+                                                                            iops=iops))
 
-        if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
-        rdsCost = rdsCost + rds_storage_cost['totalCost']
+            if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
+            rdsCost = rdsCost + rds_storage_cost['totalCost']
+        except Exception as failure:
+            log.error('Error processing RDS storage costs: %s', failure.message)
 
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
 
@@ -251,15 +265,18 @@ def handler(event, context):
       memory = get_lambda_memory(funcname,qualifier)
       log.info("Executions for Lambda function [{}]: [{}] - Memory:[{}] - Avg Duration:[{}]".format(funcname,executions,memory, avgduration))
       if executions and avgduration:
-          #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
-          lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
-                                            avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
-                                            dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
-          lambda_func_cost = lambdapricing.calculate(lambdapdim)
-          if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
-          lambdaCost = lambdaCost + lambda_func_cost['totalCost']
+          try:
+              #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
+              lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
+                                                avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
+                                                dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
+              lambda_func_cost = lambdapricing.calculate(lambdapdim)
+              if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
+              lambdaCost = lambdaCost + lambda_func_cost['totalCost']
 
-          put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+              put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+          except Exception as failure:
+              log.error('Error processing Lambda costs: %s', failure.message)
       else:
           log.info("Skipping pricing calculation for function [{}] - qualifier [{}] due to lack of executions in [{}-minute] time window".format(fullname, qualifier, METRIC_WINDOW))
 
@@ -688,22 +705,3 @@ class ResourceManager():
             self.type = type
             self.id = id
             self.arn = arn
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
