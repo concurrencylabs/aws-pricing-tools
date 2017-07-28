@@ -7,10 +7,10 @@ from botocore.exceptions import ClientError
 import math, numpy
 sys.path.insert(0, os.path.abspath('..'))
 
-import pricecalculator.awslambda.pricing as lambdapricing
-import pricecalculator.common.data as data
-import pricecalculator.common.consts as consts
-import pricecalculator.common.errors as errors
+import awspricecalculator.awslambda.pricing as lambdapricing
+import awspricecalculator.common.models as data
+import awspricecalculator.common.consts as consts
+import awspricecalculator.common.errors as errors
 
 logsclient = boto3.client('logs')
 lambdaclient = boto3.client('lambda')

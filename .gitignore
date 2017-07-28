@@ -7,3 +7,5 @@ pip-selfcheck.json
 # We don't need compiled Python artifacts in the repo
 *.pyc
 *.pyo
+.idea/*
+.serverless/*

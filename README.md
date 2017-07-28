@@ -17,7 +17,7 @@ https://www.concurrencylabs.com/blog/aws-lambda-cost-optimization-tools/
 
 The code is structured in the following way:
 
-**pricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
+**awspricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
 They take price dimension parameters as inputs and return results in JSON format. This package
 is called by Lambda functions or other Python scripts.
 
@@ -216,7 +216,7 @@ export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
 
 The code needs a local copy of the the AWS Price List API index file. 
 The GitHub repo doesn't come with the index file, therefore you have to
-download it the first time you run a test and every time AWS publishes a new
+download it the first time you run your code and every time AWS publishes a new
 Price List API index.
 
 Also, this index file is constantly updated by AWS. I recommend subscribing to the AWS Price List API
@@ -230,7 +230,9 @@ python get-latest-index.py --service=all
 
 The script takes a few seconds to execute since some index files are a little heavy (like the EC2 one).
 
-Once you have all dependencies installed, virtualenv activated, environment
+**Run a test**
+
+Once you have the virtualenv activated, all dependencies installed, environment
 variables set and the latest AWS Price List index file, it's time to run a test.
 
 Update ```test/events/constant-tag.json``` with a tag key/value pair that exists in your AWS account.
