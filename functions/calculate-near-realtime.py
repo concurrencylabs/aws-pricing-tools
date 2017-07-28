@@ -4,11 +4,11 @@ import json
 import logging, os, sys
 import boto3
 from botocore.exceptions import ClientError
-import pricecalculator.ec2.pricing as ec2pricing
-import pricecalculator.rds.pricing as rdspricing
-import pricecalculator.awslambda.pricing as lambdapricing
+import awspricecalculator.ec2.pricing as ec2pricing
+import awspricecalculator.rds.pricing as rdspricing
+import awspricecalculator.awslambda.pricing as lambdapricing
 
-import pricecalculator.common.data as data
+import awspricecalculator.common.models as data
 
 
 log = logging.getLogger()

@@ -1,0 +1,25 @@
+#files that will not be committed
+*.pyc
+*.csv
+*.zip
+bin/*
+lib/*
+.idea/*
+include/*
+.serverless/*
+.Python
+pip-selfcheck.json
+
+
+#temporarily out
+awspricecalculator/s3*
+awspricecalculator/common/utils.py
+scripts/ec2-pricing.py
+scripts/rds-pricing.py
+scripts/s3-pricing.py
+scripts/lambda-pricing.py
+scripts/context.py
+
+
+test/events/constant-lambda-function-local.json
+test/events/constant-tag-local.json

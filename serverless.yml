@@ -31,11 +31,11 @@ package:
     - .idea/**
     - include/**
     - pip-selfcheck.json
-    - pricecalculator/s3
-    - pricecalculator/data/ec2/index.*
-    - pricecalculator/data/rds/index.*
-    - pricecalculator/data/s3/index.*
-    - pricecalculator/data/lambda/index.*
+    - awspricecalculator/s3
+    - awspricecalculator/data/ec2/index.*
+    - awspricecalculator/data/rds/index.*
+    - awspricecalculator/data/s3/index.*
+    - awspricecalculator/data/lambda/index.*
     - scripts/**
     - test/**
     - cloudformation/**

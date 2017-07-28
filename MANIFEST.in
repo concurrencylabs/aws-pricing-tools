@@ -1,0 +1,2 @@
+recursive-include awspricecalculator/data *.csv *.json
+

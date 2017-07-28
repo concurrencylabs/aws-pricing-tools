@@ -3,8 +3,8 @@ import os, sys, getopt, json, csv
 from urllib2 import urlopen
 
 sys.path.insert(0, os.path.abspath('..'))
-import pricecalculator.common.consts as consts
-import pricecalculator.common.phelper as phelper
+import awspricecalculator.common.consts as consts
+import awspricecalculator.common.phelper as phelper
 
 
 def main(argv):
@@ -60,7 +60,7 @@ def main(argv):
           print ('Downloading offerIndexUrl:['+offerIndexUrl+']...')
 
           #TODO: add validation, if data dir doesn't exist, create it
-          filename = "../pricecalculator/data/"+s+"/index."+format
+          filename = "../awspricecalculator/data/"+s+"/index."+format
 
           with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
 
@@ -98,13 +98,20 @@ def remove_metadata(index_filename):
     print "metadata_json: [{}]".format(metadata_json)
     mf.write(metadata_json)
 
+"""
+Index files are too large. For example, the one for EC2 has more than 160K records.
+In order to make price lookup more efficient, awspricecalculator splits the
+index based on a combination of region, term type and product family. Each partition
+has a key, which is used by tinydb to load smaller files as databases that can be
+queried. This increases performance significantly.
 
+"""
 
 def split_index(service):
-
-
     #Split index format: region -> term type -> product family
-    indexDict = {}
+    indexDict = {}#contains the keys of the files that will be created
+    productFamilies = {}
+    usageGroupings=[]
     partition_keys = phelper.get_partition_keys('')
     for pk in partition_keys:
         indexDict[pk]=[]
@@ -124,11 +131,23 @@ def split_index(service):
             if 'Product Family' in row:
                 if row['Product Family']== consts.PRODUCT_FAMILY_DATA_TRANSFER:
                     indexRegion = row['From Location']
+
             indexKey = phelper.create_file_key(indexRegion,row['TermType'],row['Product Family'])
             if indexKey in indexDict:
                 indexDict[indexKey].append(row)
+
+            #Get a list of distinct product families in the index file
+            productFamily = row['Product Family']
+            if productFamily not in productFamilies:
+                productFamilies[productFamily] = []
+            usageGroup = row['Group']
+            if usageGroup not in productFamilies[productFamily]:
+                productFamilies[productFamily].append(usageGroup)
+
+
             x += 1
 
+    print ("productFamilies:{}".format(productFamilies))
     #print "metadata: {}".format(metadata)
 
     i = 0
@@ -148,7 +167,7 @@ def split_index(service):
 
 
 def get_index_file_name(service, name, format):
-  result = '../pricecalculator/data/'+service+'/'+name+'.'+format
+  result = '../awspricecalculator/data/'+service+'/'+name+'.'+format
   return result
 
 

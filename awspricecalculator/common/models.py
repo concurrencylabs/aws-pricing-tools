@@ -75,7 +75,8 @@ class Ec2PriceDimension():
       self.instanceHours = 0
       if 'instanceHours' in kargs: self.instanceHours = kargs['instanceHours']
       self.operatingSystem = consts.SCRIPT_OPERATING_SYSTEM_LINUX
-      if 'operatingSystem' in kargs: self.operatingSystem = kargs['operatingSystem']
+      if 'operatingSystem' in kargs:
+          if kargs['operatingSystem']: self.operatingSystem = kargs['operatingSystem']
 
       #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
       self.preInstalledSoftware = 'NA'
@@ -122,40 +123,38 @@ class Ec2PriceDimension():
       self.validate()
 
     def validate(self):
-      validation_ok = True
       validation_message = ""
 
       if self.instanceType and self.instanceType not in consts.SUPPORTED_INSTANCE_TYPES:
-        validation_message = "instance-type must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
-        validation_ok = False
+        validation_message += "instance-type must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)+"\n"
       if self.region not in consts.SUPPORTED_REGIONS:
-        validation_message = "region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
-        validation_ok = False
+        validation_message += "region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)+"\n"
+      if not self.operatingSystem:
+        validation_message += "operating-system cannot be empty\n"
       if self.operatingSystem and self.operatingSystem not in consts.SUPPORTED_EC2_OPERATING_SYSTEMS:
-        validation_message = "operating-system must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)
-        validation_ok = False
+        validation_message += "operating-system must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)+"\n"
       if self.ebsVolumeType and self.ebsVolumeType not in consts.SUPPORTED_EBS_VOLUME_TYPES:
-        validation_message = "ebs-volume-type must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)
-        validation_ok = False
+        validation_message += "ebs-volume-type must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)+"\n"
+      if self.dataTransferOutInterRegionGb > 0 and not self.toRegion:
+        validation_message += "Must specify a to-region if you specify data-transfer-out-interregion-gb\n"
       if self.dataTransferOutInterRegionGb and self.toRegion not in consts.SUPPORTED_REGIONS:
-        validation_message = "to-region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+        validation_message += "to-region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)+"\n"
       if self.dataTransferOutInterRegionGb and self.region == self.toRegion:
-        validation_message = "source and destination regions must be different for inter-regional data transfers"
-
+        validation_message += "source and destination regions must be different for inter-regional data transfers\n"
       if self.termType not in consts.SUPPORTED_TERM_TYPES:
-          validation_message = "term-type must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
-
+          validation_message += "term-type must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)+"\n"
       if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
           if not self.offeringClass:
-              validation_message = "offering-class must be specified for Reserved instances"
+              validation_message += "offering-class must be specified for Reserved instances\n"
           if not self.purchaseOption:
-              validation_message = "purchase-option must be specified for Reserved instances"
+              validation_message += "purchase-option must be specified for Reserved instances\n"
 
 
       #TODO: add validation for max number of IOPS
       #TODO: add validation for negative numbers
 
-      if not validation_ok:
+      validation_ok = True
+      if validation_message:
           raise ValidationError(validation_message)
 
       return validation_ok

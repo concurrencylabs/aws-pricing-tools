@@ -2,7 +2,7 @@
 import json
 import logging
 from ..common import consts, phelper
-from ..common.data import PricingResult
+from ..common.models import PricingResult
 import tinydb
 
 
@@ -10,18 +10,23 @@ import tinydb
 log = logging.getLogger()
 
 
+
 def calculate(pdim):
 
-  ts = phelper.Timestamp()
-  ts.start('totalCalculation')
 
   log.info("Calculating EC2 pricing with the following inputs: {}".format(str(pdim.__dict__)))
   #print("Calculating EC2 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
+  ts = phelper.Timestamp()
+  ts.start('totalCalculation')
   ts.start('tinyDbLoad')
+
   dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region))
   ts.finish('tinyDbLoad')
   print "Time to load DB files: [{}]".format(ts.elapsed('tinyDbLoad'))
+
+
+
 
   cost = 0
   pricing_records = []
@@ -30,7 +35,7 @@ def calculate(pdim):
 
   priceQuery = tinydb.Query()
 
-  #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py
+  #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py (create a class)
   #Compute Instance
   if pdim.instanceHours:
     computeDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE)]
@@ -101,10 +106,11 @@ def calculate(pdim):
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbDataProcessedGb, pricing_records, cost)
 
 
-  #EIP
-  #Dedicated Host
-  #NAT Gateway
-  #Fee
+  #TODO: EIP
+  #TODO: Dedicated Host
+  #TODO: NAT Gateway
+  #TODO: Fee
+  #TODO: Reserved
 
 
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)

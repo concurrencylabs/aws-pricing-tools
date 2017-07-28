@@ -3,6 +3,8 @@
 # COMMON
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 DEFAULT_CURRENCY = "USD"
+FORECAST_PERIOD_MONTHLY = "monthly"
+FORECAST_PERIOD_YEARLY = "yearly"
 
 SERVICE_CODE_AWS_DATA_TRANSFER = 'AWSDataTransfer'
 
@@ -22,6 +24,42 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ap-south-1':'Asia Pacific (Mumbai)'
               }
 
+
+REGION_PREFIX_MAP = {'us-east-1':'',
+              'us-east-2':'USE2-',
+              'us-west-1':'USW1-',
+              'us-west-2':'USW2-',
+              'ca-central-1':'CAN1-',
+              'eu-west-1':'EU-',
+              'eu-west-2':'EUW2-',
+              'eu-central-1':'EUC1-',
+              'ap-northeast-1':'APN1-',
+              'ap-northeast-2':'APN2-',
+              'ap-southeast-1':'APS1-',
+              'ap-southeast-2':'APS2-',
+              'sa-east-1':'SAE1-',
+              'ap-south-1':'APS3-',
+              'US East (N. Virginia)':'',
+              'US East (Ohio)':'USE2-',
+              'US West (N. California)':'USW1-',
+              'US West (Oregon)':'USW2-',
+              'Canada (Central)':'CAN1-',
+              'EU (Ireland)':'EU-',
+              'EU (London)':'EUW2-',
+              'EU (Frankfurt)':'EUC1-',
+              'Asia Pacific (Tokyo)':'APN1-',
+              'Asia Pacific (Seoul)':'APN2-',
+              'Asia Pacific (Singapore)':'APS1-',
+              'Asia Pacific (Sydney)':'APS2-',
+              'South America (Sao Paulo)':'SAE1-',
+              'Asia Pacific (Mumbai)':'APS3-',
+              'AWS GovCloud (US)':'UGW1-',
+              'External':'',
+              'Any': ''
+              }
+
+
+
 REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'us-east-2':'Ohio',
               'us-west-1':'N. California',
@@ -38,21 +76,8 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'ap-south-1':'Mumbai'
               }
 
-REGION_PREFIX_MAP = {'us-east-1':'',
-              'us-east-2':'USE2-',
-              'us-west-1':'USW1-',
-              'us-west-2':'USW2-',
-              'ca-central-1':'CAN1-',
-              'eu-west-1':'EU-',
-              'eu-west-2':'EUW2-',
-              'eu-central-1':'EUC1-',
-              'ap-northeast-1':'APN1-',
-              'ap-northeast-2':'APN2-',
-              'ap-southeast-1':'APS1-',
-              'ap-southeast-2':'APS2-',
-              'sa-east-1':'SAE1-',
-              'ap-south-1':'APS3-'
-              }
+
+
 
 
 

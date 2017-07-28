@@ -1,7 +1,7 @@
 {
-    "OfferCode": "AmazonRDS", 
+    "OfferCode": "AmazonEC2", 
     "FormatVersion": "v1.0", 
-    "Version": "20170327042929", 
-    "Publication Date": "2017-03-27T04:29:29Z", 
+    "Version": "20170526181956", 
+    "Publication Date": "2017-05-26T18:19:56Z", 
     "Disclaimer": "This pricing list is for informational purposes only. All prices are subject to the additional terms included in the pricing pages on http://aws.amazon.com. All Free Tier prices are also subject to the terms included at https://aws.amazon.com/free/"
 }

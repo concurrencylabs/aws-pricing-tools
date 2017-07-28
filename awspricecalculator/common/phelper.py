@@ -4,7 +4,7 @@ import os, sys
 import datetime
 import logging
 import csv, json
-from data import PricingRecord, PricingResult
+from models import PricingRecord, PricingResult
 
 log = logging.getLogger()
 
