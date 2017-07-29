@@ -15,11 +15,11 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ca-central-1':'Canada (Central)',
               'eu-west-1':'EU (Ireland)',
               'eu-west-2':'EU (London)',
-              'eu-central-1':'EU (Frankfurt)',              
+              'eu-central-1':'EU (Frankfurt)',
               'ap-northeast-1':'Asia Pacific (Tokyo)',
-              'ap-northeast-2':'Asia Pacific (Seoul)',              
+              'ap-northeast-2':'Asia Pacific (Seoul)',
               'ap-southeast-1':'Asia Pacific (Singapore)',
-              'ap-southeast-2':'Asia Pacific (Sydney)',              
+              'ap-southeast-2':'Asia Pacific (Sydney)',
               'sa-east-1':'South America (Sao Paulo)',
               'ap-south-1':'Asia Pacific (Mumbai)'
               }
@@ -101,17 +101,17 @@ SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-centr
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1')
 
-SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small' ,
-                            'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge' ,
-                            'm4.large' , 'm4.xlarge' , 'm4.2xlarge' , 'm4.4xlarge' , 'm4.10xlarge' , 'm2.xlarge' ,
-                            'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
-                            'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge' ,
+SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small',
+                            'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge',
+                            'm4.large' , 'm4.xlarge' , 'm4.2xlarge' , 'm4.4xlarge' , 'm4.10xlarge' , 'm2.xlarge',
+                            'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.large', 'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
+                            'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge',
                             'r3.4xlarge' , 'r3.8xlarge' , 'x1.4xlarge' , 'x1.8xlarge' , 'x1.16xlarge' , 'x1.32xlarge',
-                            'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge' ,
+                            'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge',
                             'i3.large', 'i3.xlarge', 'i3.2xlarge', 'i3.4xlarge', 'i3.8xlarge',
-                            'hi1.4xlarge' , 'hs1.8xlarge' ,
-                            'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge' ,
-                            'c3.8xlarge' , 'c4.large' , 'c4.xlarge' , 'c4.2xlarge' , 'c4.4xlarge' , 'c4.8xlarge' ,
+                            'hi1.4xlarge' , 'hs1.8xlarge',
+                            'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge',
+                            'c3.8xlarge' , 'c4.large' , 'c4.xlarge' , 'c4.2xlarge' , 'c4.4xlarge' , 'c4.8xlarge',
                             'cc1.4xlarge' , 'cc2.8xlarge' , 'g2.2xlarge' , 'g2.8xlarge' , 'cg1.4xlarge' , 'd2.xlarge',
                             'd2.2xlarge' , 'd2.4xlarge' , 'd2.8xlarge')
 
@@ -235,7 +235,7 @@ EC2_LICENSE_MODEL_MAP = {SCRIPT_EC2_LICENSE_MODEL_BYOL: 'Bring your own license'
                          }
 
 
-EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux', 
+EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux',
                              SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:'Windows',
                              SCRIPT_OPERATING_SYSTEM_WINDOWS:'Windows',
                              SCRIPT_OPERATING_SYSTEM_SUSE:'SUSE',
@@ -251,7 +251,7 @@ SUPPORTED_EBS_VOLUME_TYPES = (SCRIPT_EBS_VOLUME_TYPE_STANDARD,
 
 EBS_VOLUME_TYPES_MAP = {
                         SCRIPT_EBS_VOLUME_TYPE_STANDARD : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_MAGNETIC},
-                        SCRIPT_EBS_VOLUME_TYPE_IO1 : {'storageMedia':STORAGE_MEDIA_SSD , 'volumeType':EBS_VOLUME_TYPE_PIOPS}, 
+                        SCRIPT_EBS_VOLUME_TYPE_IO1 : {'storageMedia':STORAGE_MEDIA_SSD , 'volumeType':EBS_VOLUME_TYPE_PIOPS},
                         SCRIPT_EBS_VOLUME_TYPE_GP2 : {'storageMedia':STORAGE_MEDIA_SSD , 'volumeType':EBS_VOLUME_TYPE_GENERAL_PURPOSE},
                         SCRIPT_EBS_VOLUME_TYPE_SC1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_COLD_HDD},
                         SCRIPT_EBS_VOLUME_TYPE_ST1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_THROUGHPUT_OPTIMIZED}
@@ -399,6 +399,3 @@ S3_STORAGE_CLASS_MAP = {SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS:S3_STORAGE_CLASS_
 #LAMBDA
 
 LAMBDA_MEM_SIZES = [128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536]
-
-
-

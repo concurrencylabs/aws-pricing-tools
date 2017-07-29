@@ -126,29 +126,28 @@ class Ec2PriceDimension():
       validation_message = ""
 
       if self.instanceType and self.instanceType not in consts.SUPPORTED_INSTANCE_TYPES:
-        validation_message += "instance-type must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)+"\n"
+        validation_message += "instance-type is "+self.instanceType+", must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
       if self.region not in consts.SUPPORTED_REGIONS:
-        validation_message += "region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)+"\n"
+        validation_message += "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
       if not self.operatingSystem:
         validation_message += "operating-system cannot be empty\n"
       if self.operatingSystem and self.operatingSystem not in consts.SUPPORTED_EC2_OPERATING_SYSTEMS:
-        validation_message += "operating-system must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)+"\n"
+        validation_message += "operating-system is "+self.operatingSystem+", must be one of the following values:"+str(consts.SUPPORTED_EC2_OPERATING_SYSTEMS)
       if self.ebsVolumeType and self.ebsVolumeType not in consts.SUPPORTED_EBS_VOLUME_TYPES:
-        validation_message += "ebs-volume-type must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)+"\n"
+        validation_message += "ebs-volume-type is "+self.ebsVolumeType+", must be one of the following values:"+str(consts.SUPPORTED_EBS_VOLUME_TYPES)
       if self.dataTransferOutInterRegionGb > 0 and not self.toRegion:
         validation_message += "Must specify a to-region if you specify data-transfer-out-interregion-gb\n"
       if self.dataTransferOutInterRegionGb and self.toRegion not in consts.SUPPORTED_REGIONS:
-        validation_message += "to-region must be one of the following values:"+str(consts.SUPPORTED_REGIONS)+"\n"
+        validation_message += "to-region is "+self.toRegion+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
       if self.dataTransferOutInterRegionGb and self.region == self.toRegion:
         validation_message += "source and destination regions must be different for inter-regional data transfers\n"
       if self.termType not in consts.SUPPORTED_TERM_TYPES:
-          validation_message += "term-type must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)+"\n"
+          validation_message += "term-type is "+self.termType+", must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
       if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
           if not self.offeringClass:
               validation_message += "offering-class must be specified for Reserved instances\n"
           if not self.purchaseOption:
               validation_message += "purchase-option must be specified for Reserved instances\n"
-
 
       #TODO: add validation for max number of IOPS
       #TODO: add validation for negative numbers
@@ -395,4 +394,3 @@ class PricingRecord():
         self.pricePerUnit = pricePerUnit
         self.usageUnits = int(usgUnits)
         self.rateCode = rateCode
-

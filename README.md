@@ -17,7 +17,7 @@ https://www.concurrencylabs.com/blog/aws-lambda-cost-optimization-tools/
 
 The code is structured in the following way:
 
-**pricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
+**awspricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
 They take price dimension parameters as inputs and return results in JSON format. This package
 is called by Lambda functions or other Python scripts.
 

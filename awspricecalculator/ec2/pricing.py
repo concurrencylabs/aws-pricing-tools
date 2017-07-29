@@ -118,5 +118,3 @@ def calculate(pdim):
 
   print "Total time to compute: [{}]".format(ts.finish('totalCalculation'))
   return pricing_result.__dict__
-
-

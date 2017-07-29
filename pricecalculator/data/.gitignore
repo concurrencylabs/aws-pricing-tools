@@ -1,0 +1,3 @@
+# Don't include the pricedata in the git repo - we want to download this
+# instead of working with stale cost data
+*.csv

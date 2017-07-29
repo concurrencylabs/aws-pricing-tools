@@ -1,15 +1,14 @@
-#files that will not be committed
-*.pyc
-*.csv
-*.zip
-bin/*
-lib/*
-.idea/*
-include/*
-.serverless/*
+# Don't include anything installed into the virtualenv by pip
 .Python
+bin
+lib
+include
 pip-selfcheck.json
-
+# We don't need compiled Python artifacts in the repo
+*.pyc
+*.pyo
+.idea/*
+.serverless/*
 
 #temporarily out
 awspricecalculator/s3*
@@ -20,7 +19,3 @@ scripts/s3-pricing.py
 scripts/lambda-pricing.py
 scripts/dynamodb-pricing.py
 scripts/context.py
-
-
-test/events/constant-lambda-function-local.json
-test/events/constant-tag-local.json
