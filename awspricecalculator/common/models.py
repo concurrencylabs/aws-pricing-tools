@@ -313,6 +313,64 @@ class LambdaPriceDimension():
         return
 
 
+
+class DynamoDBPriceDimension():
+    def __init__(self,**kargs):
+        #print("DynamoDBPriceDimension args:{}".format(kargs))
+
+        self.region = ''
+        self.region = kargs['region']
+
+        self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
+
+        self.readCapacityUnitHours = 0
+        if 'readCapacityUnitHours' in kargs: self.readCapacityUnitHours = kargs['readCapacityUnitHours']
+
+        self.writeCapacityUnitHours = 0
+        if 'writeCapacityUnitHours' in kargs: self.writeCapacityUnitHours = kargs['writeCapacityUnitHours']
+
+        #used for reads to DDB Streams
+        self.requestCount = 0
+        if  'requestCount' in kargs: self.requestCount = kargs['requestCount']
+
+
+        self.dataTransferOutGb = 0
+        if 'dataTransferOutGb' in kargs: self.dataTransferOutGb = kargs['dataTransferOutGb']
+
+        """
+        self.dataTransferOutInterRegionGb = 0
+        if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
+
+        self.toRegion = ''
+        if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
+        """
+
+        self.validate()
+
+
+    def validate(self):
+        validation_message = ""
+        if not self.region:
+            validation_message += "Region must be specified\n"
+        if self.region not in consts.SUPPORTED_REGIONS:
+            validation_message += "Region must be one of the following:"+str(consts.SUPPORTED_REGIONS)
+        if self.readCapacityUnitHours == 0:
+            validation_message += "readCapacityUnitHours cannot be 0\n"
+        if self.writeCapacityUnitHours == 0:
+            validation_message += "writeCapacityUnitHours cannot be 0\n"
+
+        if validation_message:
+            print("Error: [{}]".format(validation_message))
+            raise ValidationError(validation_message)
+
+        return
+
+
+
+
+
+
+
 """
 This object represents the total price calculation.
 It includes an array of PricingRecord objects, which are a breakdown of how the price is calculated

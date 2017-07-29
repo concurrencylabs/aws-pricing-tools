@@ -6,12 +6,15 @@ sys.path.insert(0, os.path.abspath('..'))
 import awspricecalculator.common.consts as consts
 import awspricecalculator.common.phelper as phelper
 
+__location__ = os.path.dirname(os.path.realpath(__file__))
+dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator", "data")
+
+
 
 def main(argv):
 
-  SUPPORTED_SERVICES = ('s3', 'ec2','rds','lambda', 'all')
+  SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA, consts.SERVICE_DYNAMODB, consts.SERVICE_ALL)
   SUPPORTED_FORMATS = ('json','csv')
-  SERVICE_INDEX_MAP = {'s3':'AmazonS3', 'ec2':'AmazonEC2', 'rds':'AmazonRDS','lambda':'AWSLambda'} #TODO:use consts instead
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
   
   service = ''
@@ -56,11 +59,14 @@ def main(argv):
 
   for s in services:
       if s != 'all':
-          offerIndexUrl = OFFER_INDEX_URL.replace('{serviceIndex}',SERVICE_INDEX_MAP[s]) + format
+          offerIndexUrl = OFFER_INDEX_URL.replace('{serviceIndex}',consts.SERVICE_INDEX_MAP[s]) + format
           print ('Downloading offerIndexUrl:['+offerIndexUrl+']...')
 
-          #TODO: add validation, if data dir doesn't exist, create it
-          filename = "../awspricecalculator/data/"+s+"/index."+format
+          servicedatapath = dataindexpath + "/" + s
+          print ("servicedatapath:[{}]".format(servicedatapath))
+
+          if not os.path.isdir(servicedatapath): os.mkdir(servicedatapath)
+          filename = servicedatapath+"/index."+format
 
           with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
 

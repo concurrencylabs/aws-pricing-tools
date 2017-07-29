@@ -1,0 +1,88 @@
+
+import json
+import logging
+from ..common import consts, phelper
+from ..common.models import PricingResult
+import tinydb
+
+log = logging.getLogger()
+
+
+def calculate(pdim):
+
+  log.info("Calculating DynamoDB pricing with the following inputs: {}".format(str(pdim.__dict__)))
+
+  ts = phelper.Timestamp()
+  ts.start('totalCalculationDynamoDB')
+
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_DYNAMODB, phelper.get_partition_keys(pdim.region))
+
+  cost = 0
+  pricing_records = []
+
+  awsPriceListApiVersion = indexMetadata['Version']
+  priceQuery = tinydb.Query()
+
+
+
+  #TODO:add support for free-tier flag (include or exclude from calculation)
+
+  iopsDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DB_PIOPS)]
+
+  #Read Capacity Units
+  query = ((priceQuery['Group'] == 'DDB-ReadUnits'))
+  pricing_records, cost = phelper.calculate_price(consts.SERVICE_DYNAMODB, iopsDb, query, pdim.readCapacityUnitHours, pricing_records, cost)
+
+  #Write Capacity Units
+  query = ((priceQuery['Group'] == 'DDB-WriteUnits'))
+  pricing_records, cost = phelper.calculate_price(consts.SERVICE_DYNAMODB, iopsDb, query, pdim.writeCapacityUnitHours, pricing_records, cost)
+
+
+
+
+  #DB Storage
+
+
+
+  #Data Transfer
+  #there is no additional charge for data transferred between Amazon DynamoDB and other Amazon Web Services within the same Region
+  #data transferred across Regions (e.g., between Amazon DynamoDB in the US East (Northern Virginia) Region and Amazon EC2 in the EU (Ireland) Region), will be charged on both sides of the transfer.
+
+
+
+
+
+
+  """
+  #API Requests (only applies for DDB Streams)
+  apiRequestsDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_API_REQUEST)]
+  if pdim.requestCount:
+    query = ((priceQuery['Group'] == 'DDB-StreamsReadRequests'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_DYNAMODB, apiRequestsDb, query, pdim.requestCount, pricing_records, cost)
+
+
+  #Data Transfer
+  dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+
+  #To internet
+  if pdim.dataTransferOutInternetGb:
+    query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
+
+  #Intra-regional data transfer - in/out/between EC2 AZs or using IPs or ELB
+  if pdim.dataTransferOutIntraRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'IntraRegion'))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutIntraRegionGb, pricing_records, cost)
+
+  #Inter-regional data transfer - out to other AWS regions
+  if pdim.dataTransferOutInterRegionGb:
+    query = ((priceQuery['Transfer Type'] == 'InterRegion Outbound') & (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]))
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
+  """
+
+
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
+
+  log.debug("Total time to compute: [{}]".format(ts.finish('totalCalculationDynamoDB')))
+  return pricing_result.__dict__

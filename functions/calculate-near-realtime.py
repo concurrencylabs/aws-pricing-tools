@@ -7,6 +7,7 @@ from botocore.exceptions import ClientError
 import awspricecalculator.ec2.pricing as ec2pricing
 import awspricecalculator.rds.pricing as rdspricing
 import awspricecalculator.awslambda.pricing as lambdapricing
+import awspricecalculator.dynamodb.pricing as ddbpricing
 
 import awspricecalculator.common.models as data
 
@@ -18,6 +19,7 @@ ec2client = None
 rdsclient = None
 elbclient = None
 lambdaclient = None
+dddbclient = None
 cwclient = None
 tagsclient = None
 
@@ -52,6 +54,7 @@ CW_METRIC_DIMENSION_TAG = 'Tag'
 CW_METRIC_DIMENSION_SERVICE_NAME_EC2 = 'ec2'
 CW_METRIC_DIMENSION_SERVICE_NAME_RDS = 'rds'
 CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA = 'lambda'
+CW_METRIC_DIMENSION_SERVICE_NAME_DYNAMODB = 'dynamodb'
 CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL = 'total'
 CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 
@@ -60,6 +63,7 @@ SERVICE_EC2 = 'ec2'
 SERVICE_RDS = 'rds'
 SERVICE_ELB = 'elasticloadbalancing'
 SERVICE_LAMBDA = 'lambda'
+SERVICE_DYNAMODB = 'dynamodb'
 
 RESOURCE_LAMBDA_FUNCTION = 'function'
 RESOURCE_ELB = 'loadbalancer'
@@ -67,11 +71,14 @@ RESOURCE_EC2_INSTANCE = 'instance'
 RESOURCE_RDS_DB_INSTANCE = 'db'
 RESOURCE_EBS_VOLUME = 'volume'
 RESOURCE_EBS_SNAPSHOT = 'snapshot'
+RESOURCE_DDB_TABLE = 'table'
 
 SERVICE_RESOURCE_MAP = {SERVICE_EC2:[RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT, RESOURCE_EC2_INSTANCE],
                         SERVICE_RDS:[RESOURCE_RDS_DB_INSTANCE],
                         SERVICE_LAMBDA:[RESOURCE_LAMBDA_FUNCTION],
-                        SERVICE_ELB:[RESOURCE_ELB]}
+                        SERVICE_ELB:[RESOURCE_ELB],
+                        SERVICE_DYNAMODB:[RESOURCE_DDB_TABLE]
+                        }
 
 
 #_/_/_/_/_/_/ default values - end _/_/_/_/_/_/
@@ -95,6 +102,7 @@ def handler(event, context):
     ec2Cost = 0
     rdsCost = 0
     lambdaCost = 0
+    ddbCost = 0
     totalCost = 0
 
     #First, get the tags we'll be searching for, from the CloudWatch scheduled event
@@ -197,7 +205,7 @@ def handler(event, context):
     if db_instances:
         log.info("Found the following tagged DB instances:{}".format(db_instances.keys()))
     else:
-        log.info("Didn't find any tagged DB instances")
+        log.info("Didn't find any tagged RDS DB instances")
 
     #Calculate RDS instance time for ALL instance types found - group by DB instance types
     all_db_instance_dict = {}
@@ -259,13 +267,33 @@ def handler(event, context):
           if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
           lambdaCost = lambdaCost + lambda_func_cost['totalCost']
 
-          put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
+          #put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
       else:
           log.info("Skipping pricing calculation for function [{}] - qualifier [{}] due to lack of executions in [{}-minute] time window".format(fullname, qualifier, METRIC_WINDOW))
 
 
+    #DynamoDB
+    totalRead = 0
+    totalWrite = 0
+    ddbtables = resource_manager.get_resources(SERVICE_DYNAMODB, RESOURCE_DDB_TABLE)
+    #Provisioned Capacity Units
+    for t in ddbtables:
+        read, write = get_ddb_capacity_units(t.id)
+        log.info("Dynamo DB Provisioned Capacity Units - Table:{} Read:{} Write:{}".format(t.id, read, write))
+        totalRead += read
+        totalWrite += write
+    ddbpdim = data.DynamoDBPriceDimension(region=region, readCapacityUnitHours=totalRead*HOURS_DICT[FORECAST_PERIOD_MONTHLY],
+                                                         writeCapacityUnitHours=totalWrite*HOURS_DICT[FORECAST_PERIOD_MONTHLY])
+    ddbtable_cost = ddbpricing.calculate(ddbpdim)
+    if 'pricingRecords' in ddbtable_cost: pricing_records.extend(ddbtable_cost['pricingRecords'])
+    ddbCost = ddbCost + ddbtable_cost['totalCost']
+
+
+
+
+
     #Do this after all calculations for all supported services have concluded
-    totalCost = ec2Cost + rdsCost + lambdaCost
+    totalCost = ec2Cost + rdsCost + lambdaCost + ddbCost
     result['pricingRecords'] = pricing_records
     result['totalCost'] = round(totalCost,2)
     result['forecastPeriod']=DEFAULT_FORECAST_PERIOD
@@ -277,7 +305,9 @@ def handler(event, context):
       put_cw_metric_data(end, ec2Cost, CW_METRIC_DIMENSION_SERVICE_NAME_EC2, tagkey, tagvalue)
       put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
       put_cw_metric_data(end, lambdaCost, CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, tagkey, tagvalue)
+      put_cw_metric_data(end, ddbCost, CW_METRIC_DIMENSION_SERVICE_NAME_DYNAMODB, tagkey, tagvalue)
       put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
+
 
 
     log.info (json.dumps(result,sort_keys=False,indent=4))
@@ -572,6 +602,20 @@ def get_lambda_memory(functionname, qualifier):
     return result
 
 
+def get_ddb_capacity_units(tablename):
+    read = 0
+    write = 0
+    try:
+        r = ddbclient.describe_table(TableName=tablename)
+        if 'Table' in r:
+            read = r['Table']['ProvisionedThroughput']['ReadCapacityUnits']
+            write = r['Table']['ProvisionedThroughput']['WriteCapacityUnits']
+        return read, write
+
+    except ClientError as e:
+        log.error("{}".format(e))
+
+
 
 
 def calculate_time_range():
@@ -600,6 +644,7 @@ def init_clients(context):
     global rdsclient
     global elbclient
     global lambdaclient
+    global ddbclient
     global cwclient
     global tagsclient
     global region
@@ -612,6 +657,7 @@ def init_clients(context):
     rdsclient = boto3.client('rds',region)
     elbclient = boto3.client('elb',region)
     lambdaclient = boto3.client('lambda',region)
+    ddbclient = boto3.client('dynamodb',region)
     cwclient = boto3.client('cloudwatch', region)
     tagsclient = boto3.client('resourcegroupstaggingapi', region)
 
@@ -635,7 +681,7 @@ class ResourceManager():
                 res = self.extract_resource(r['ResourceARN'])
                 if res:
                     self.resources.append(res)
-                    log.info("Tagged resource:{}".format(res.__dict__))
+                    #log.info("Tagged resource:{}".format(res.__dict__))
 
     #Return a service:resource list in the format the ResourceGroupTagging API expects it
     def get_resource_type_filters(self, service_resource_map):
@@ -649,8 +695,8 @@ class ResourceManager():
         service = arn.split(":")[2]
         resourceId = ''
         #See http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html for different patterns in ARNs
-        for service in ('ec2', 'elasticloadbalancing'):
-            for type in ('instance','volume','snapshot','loadbalancer'):
+        for service in ('ec2', 'elasticloadbalancing', 'dynamodb'):
+            for type in ('instance','volume','snapshot','loadbalancer','table'):
                 if ':'+service+':' in arn and ':'+type+'/' in arn:
                     resourceId = arn.split(':'+type+'/')[1]
                     return self.Resource(service, type, resourceId, arn)

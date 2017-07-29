@@ -18,6 +18,7 @@ scripts/ec2-pricing.py
 scripts/rds-pricing.py
 scripts/s3-pricing.py
 scripts/lambda-pricing.py
+scripts/dynamodb-pricing.py
 scripts/context.py
 
 

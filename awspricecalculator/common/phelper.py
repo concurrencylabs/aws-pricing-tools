@@ -150,7 +150,6 @@ def getIndexMetadata(service):
 
 
 def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
-
   resultSet = db.search(query)
   for r in resultSet:
     billableUsage, pricePerUnit, amt = getBillableBandCsv(r, usageAmount)

@@ -90,10 +90,12 @@ SERVICE_EBS = 'ebs'
 SERVICE_S3 = 's3'
 SERVICE_RDS = 'rds'
 SERVICE_LAMBDA = 'lambda'
+SERVICE_DYNAMODB= 'dynamodb'
+SERVICE_ALL = 'all'
 
 
 
-SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS)
+SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERVICE_DYNAMODB)
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
@@ -113,10 +115,8 @@ SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , '
                             'cc1.4xlarge' , 'cc2.8xlarge' , 'g2.2xlarge' , 'g2.8xlarge' , 'cg1.4xlarge' , 'd2.xlarge',
                             'd2.2xlarge' , 'd2.4xlarge' , 'd2.8xlarge')
 
-
-
-SERVICE_INDEX_MAP = {'s3':'AmazonS3','ec2':'AmazonEC2'}
-
+SERVICE_INDEX_MAP = {SERVICE_S3:'AmazonS3', SERVICE_EC2:'AmazonEC2', SERVICE_RDS:'AmazonRDS',
+                     SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB'}
 
 
 SCRIPT_TERM_TYPE_ON_DEMAND = 'on-demand'
@@ -126,12 +126,6 @@ SUPPORTED_TERM_TYPES = (SCRIPT_TERM_TYPE_ON_DEMAND, SCRIPT_TERM_TYPE_RESERVED)
 
 
 TERM_TYPE_MAP = {SCRIPT_TERM_TYPE_ON_DEMAND:'OnDemand', SCRIPT_TERM_TYPE_RESERVED:'Reserved'}
-
-
-
-
-
-
 
 
 PRODUCT_FAMILY_COMPUTE_INSTANCE = 'Compute Instance'
@@ -146,6 +140,9 @@ PRODUCT_FAMILY_SNAPSHOT = "Storage Snapshot"
 PRODUCT_FAMILY_SERVERLESS = "Serverless"
 PRODUCT_FAMILY_DB_STORAGE = "Database Storage"
 PRODUCT_FAMILY_DB_PIOPS = "Provisioned IOPS"
+
+
+
 
 
 SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DATABASE_INSTANCE,PRODUCT_FAMILY_DATA_TRANSFER,PRODUCT_FAMILY_FEE,
@@ -175,11 +172,6 @@ EC2_OPERATING_SYSTEM_RHEL = 'RHEL'
 EC2_TENANCY_SHARED = 'Shared'
 EC2_TENANCY_DEDICATED = 'Dedicated'
 
-
-
-
-
-
 STORAGE_MEDIA_SSD = "SSD-backed"
 STORAGE_MEDIA_HDD = "HDD-backed"
 STORAGE_MEDIA_S3 = "AmazonS3"
@@ -205,7 +197,6 @@ SCRIPT_EC2_LICENSE_MODEL_BYOL = 'byol'
 SCRIPT_EC2_LICENSE_MODEL_INCLUDED = 'included'
 SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED = 'none-required'
 
-
 #EBS
 SCRIPT_EBS_VOLUME_TYPE_STANDARD = 'standard'
 SCRIPT_EBS_VOLUME_TYPE_IO1 = 'io1'
@@ -229,17 +220,12 @@ EC2_PURCHASE_OPTION_MAP = {EC2_PURCHASE_OPTION_PARTIAL_UPFRONT:'Partial Upfront'
                            EC2_PURCHASE_OPTION_ALL_UPFRONT: 'All Upfront', EC2_PURCHASE_OPTION_NO_UPFRONT: 'No Upfront'
                            }
 
-
-
-
-
 SUPPORTED_EC2_OPERATING_SYSTEMS = (SCRIPT_OPERATING_SYSTEM_LINUX,
                                    SCRIPT_OPERATING_SYSTEM_WINDOWS,
                                    SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL,
                                    SCRIPT_OPERATING_SYSTEM_SUSE,
                                    #SCRIPT_OPERATING_SYSTEM_SQL_WEB,
                                    SCRIPT_OPERATING_SYSTEM_RHEL)
-
 
 SUPPORTED_EC2_LICENSE_MODELS = (SCRIPT_EC2_LICENSE_MODEL_BYOL, SCRIPT_EC2_LICENSE_MODEL_INCLUDED, SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED)
 
@@ -256,9 +242,6 @@ EC2_OPERATING_SYSTEMS_MAP = {SCRIPT_OPERATING_SYSTEM_LINUX:'Linux',
                              #SCRIPT_OPERATING_SYSTEM_SQL_WEB:'SQL Web',
                              SCRIPT_OPERATING_SYSTEM_RHEL:'RHEL'}
 
-
-
-
 SUPPORTED_EBS_VOLUME_TYPES = (SCRIPT_EBS_VOLUME_TYPE_STANDARD,
                              SCRIPT_EBS_VOLUME_TYPE_IO1,
                              SCRIPT_EBS_VOLUME_TYPE_GP2,
@@ -273,7 +256,6 @@ EBS_VOLUME_TYPES_MAP = {
                         SCRIPT_EBS_VOLUME_TYPE_SC1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_COLD_HDD},
                         SCRIPT_EBS_VOLUME_TYPE_ST1 : {'storageMedia':STORAGE_MEDIA_HDD , 'volumeType':EBS_VOLUME_TYPE_THROUGHPUT_OPTIMIZED}
                        }
-
 
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 
