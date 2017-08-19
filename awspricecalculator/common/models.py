@@ -58,8 +58,6 @@ class S3PriceDimension():
 class Ec2PriceDimension():
     def __init__(self, **kargs):
 
-      #print "kargs {}".format(kargs)
-
       self.region = kargs['region']
       self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
       if 'termType' in kargs: self.termType = kargs['termType']
@@ -258,36 +256,17 @@ class RdsPriceDimension():
 
 class LambdaPriceDimension():
     def __init__(self,**kargs):
-
-        #print("LambdaPriceDimention args:{}".format(kargs))
-
-        self.region = ''
-        self.region = kargs['region']
-
+        self.region = kargs.get('region','')
         self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
-
-        self.requestCount = 0
-        if  'requestCount' in kargs: self.requestCount = kargs['requestCount']
-
-        self.avgDurationMs = 0
-        if 'avgDurationMs' in kargs: self.avgDurationMs = kargs['avgDurationMs']
-
-        self.memoryMb = 0
-        if 'memoryMb' in kargs: self.memoryMb = kargs['memoryMb']
-
-        self.dataTransferOutInternetGb = 0
-        if 'dataTransferOutInternetGb' in kargs: self.dataTransferOutInternetGb = kargs['dataTransferOutInternetGb']
-
-        self.dataTransferOutIntraRegionGb = 0
-        if  'dataTransferOutIntraRegionGb' in kargs: self.dataTransferOutIntraRegionGb = kargs['dataTransferOutIntraRegionGb']
-
-        self.dataTransferOutInterRegionGb = 0
-        if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
-
-        self.toRegion = ''
-        if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
-
+        self.requestCount = kargs.get('requestCount',0)
+        self.avgDurationMs = kargs.get('avgDurationMs',0)
+        self.memoryMb = kargs.get('memoryMb',0)
+        self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
+        self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb')
+        self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+        self.toRegion = kargs.get('toRegion','')
         self.validate()
+        self.GBs = self.requestCount * (float(self.avgDurationMs) / 1000) * (float(self.memoryMb) / 1024)
 
 
     def validate(self):
@@ -295,7 +274,7 @@ class LambdaPriceDimension():
         if not self.region:
             validation_message += "Region must be specified\n"
         if self.region not in consts.SUPPORTED_REGIONS:
-            validation_message += "Region must be one of the following:"+str(consts.SUPPORTED_REGIONS)
+            validation_message += "Region is "+self.region+" ,must be one of the following:"+str(consts.SUPPORTED_REGIONS)
         if self.requestCount and self.avgDurationMs == 0:
             validation_message += "Cannot have value for requestCount and avgDurationMs=0\n"
         if self.requestCount and self.memoryMb== 0:
@@ -315,33 +294,15 @@ class LambdaPriceDimension():
 
 class DynamoDBPriceDimension():
     def __init__(self,**kargs):
-        #print("DynamoDBPriceDimension args:{}".format(kargs))
-
-        self.region = ''
-        self.region = kargs['region']
-
+        self.region = kargs.get('region','')
         self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
-
-        self.readCapacityUnitHours = 0
-        if 'readCapacityUnitHours' in kargs: self.readCapacityUnitHours = kargs['readCapacityUnitHours']
-
-        self.writeCapacityUnitHours = 0
-        if 'writeCapacityUnitHours' in kargs: self.writeCapacityUnitHours = kargs['writeCapacityUnitHours']
-
-        #used for reads to DDB Streams
-        self.requestCount = 0
-        if  'requestCount' in kargs: self.requestCount = kargs['requestCount']
-
-
-        self.dataTransferOutGb = 0
-        if 'dataTransferOutGb' in kargs: self.dataTransferOutGb = kargs['dataTransferOutGb']
-
+        self.readCapacityUnitHours = kargs.get('readCapacityUnitHours',0)
+        self.writeCapacityUnitHours = kargs.get('writeCapacityUnitHours',0)
+        self.requestCount = kargs.get('requestCount',0)#used for reads to DDB Streams
+        self.dataTransferOutGb = kargs.get('dataTransferOutGb',0)
         """
-        self.dataTransferOutInterRegionGb = 0
-        if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
-
-        self.toRegion = ''
-        if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
+        self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+        self.toRegion = kargs.get('toRegion','')
         """
 
         self.validate()
@@ -352,7 +313,7 @@ class DynamoDBPriceDimension():
         if not self.region:
             validation_message += "Region must be specified\n"
         if self.region not in consts.SUPPORTED_REGIONS:
-            validation_message += "Region must be one of the following:"+str(consts.SUPPORTED_REGIONS)
+            validation_message += "Region is "+self.region+", must be one of the following:"+str(consts.SUPPORTED_REGIONS)
         if self.readCapacityUnitHours == 0:
             validation_message += "readCapacityUnitHours cannot be 0\n"
         if self.writeCapacityUnitHours == 0:
@@ -365,7 +326,36 @@ class DynamoDBPriceDimension():
         return
 
 
+"""
+Please note the following - from https://aws.amazon.com/kinesis/streams/pricing/:
+* Getting records from Amazon Kinesis stream is free.
+* Data transfer is free. AWS does not charge for data transfer from your data producers to Amazon Kinesis Streams, or from Amazon Kinesis Streams to your Amazon Kinesis Applications.
+"""
 
+class KinesisPriceDimension():
+    def __init__(self,**kargs):
+        self.region = kargs.get('region','')
+        self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
+        self.shardHours = 0
+        self.shardHours = int(kargs.get('shardHours',0))
+        self.putPayloadUnits = int(kargs.get('putPayloadUnits',0))
+        self.extendedDataRetentionHours = int(kargs.get('extendedDataRetentionHours',0))
+        self.validate()
+
+    def validate(self):
+        validation_message = ""
+        if not self.region:
+            validation_message += "Region must be specified\n"
+        if self.region not in consts.SUPPORTED_REGIONS:
+            validation_message += "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+        if self.shardHours == 0:
+            validation_message += "shardHours cannot be 0\n"
+
+        if validation_message:
+            print("Error: [{}]".format(validation_message))
+            raise ValidationError(validation_message)
+
+        return
 
 
 

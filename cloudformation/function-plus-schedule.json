@@ -59,6 +59,18 @@
                     },
                     {
                         "Effect": "Allow",
+                        "Action": ["dynamodb:Describe*",
+                                   "dynamodb:List*"],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
+                        "Action": ["kinesis:Describe*",
+                                   "kinesis:List*"],
+                        "Resource": "*"
+                    },
+                    {
+                        "Effect": "Allow",
                         "Action": ["lambda:GetFunctionConfiguration"],
                         "Resource": "*"
                     },
@@ -81,8 +93,8 @@
 		    "Handler": "functions/calculate-near-realtime.handler",
 		    "Role": { "Fn::GetAtt" : ["LambdaRealtimeCalculatePricingRole", "Arn"] },
 		    "Code": {
-		      "S3Bucket": "concurrencylabs-cfn-templates",
-		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v2.0.zip"
+		      "S3Bucket": { "Fn::Join" : [ "", ["concurrencylabs-deployment-artifacts-public-", { "Ref" : "AWS::Region" }] ] },
+		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v3.1.zip"
 		    },
 		    "Runtime": "python2.7",
 		    "Timeout": "300",

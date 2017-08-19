@@ -11,7 +11,6 @@ log = logging.getLogger()
 def calculate(pdim):
 
   log.info("Calculating Lambda pricing with the following inputs: {}".format(str(pdim.__dict__)))
-  #print("Calculating Lambda pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
   ts = phelper.Timestamp()
   ts.start('totalCalculationAwsLambda')
@@ -24,7 +23,7 @@ def calculate(pdim):
   awsPriceListApiVersion = indexMetadata['Version']
   priceQuery = tinydb.Query()
 
-  #TODO:calculate free-tier (include a flag)
+  #TODO: add support to include/ignore free-tier (include a flag)
 
   serverlessDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SERVERLESS)]
 
@@ -36,7 +35,7 @@ def calculate(pdim):
   #GB-s (aka compute time)
   if pdim.avgDurationMs:
     query = ((priceQuery['Group'] == 'AWS-Lambda-Duration'))
-    usageUnits = pdim.requestCount * (float(pdim.avgDurationMs) / 1000) * (float(pdim.memoryMb) / 1024)
+    usageUnits = pdim.GBs
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, serverlessDb, query, usageUnits, pricing_records, cost)
 
   #Data Transfer

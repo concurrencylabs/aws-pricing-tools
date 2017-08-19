@@ -1,5 +1,5 @@
 from __future__ import print_function
-import datetime
+import datetime, math
 import json
 import logging, os, sys
 import boto3
@@ -8,6 +8,7 @@ import awspricecalculator.ec2.pricing as ec2pricing
 import awspricecalculator.rds.pricing as rdspricing
 import awspricecalculator.awslambda.pricing as lambdapricing
 import awspricecalculator.dynamodb.pricing as ddbpricing
+import awspricecalculator.kinesis.pricing as kinesispricing
 
 import awspricecalculator.common.models as data
 
@@ -20,11 +21,11 @@ rdsclient = None
 elbclient = None
 lambdaclient = None
 dddbclient = None
+kinesisclient = None
 cwclient = None
 tagsclient = None
 
 __location__ = os.path.dirname(os.path.realpath(__file__))
-os.path.split(__location__)[0]
 site_pkgs = os.path.join(os.path.split(__location__)[0], "lib", "python2.7", "site-packages")
 sys.path.append(site_pkgs)
 
@@ -55,6 +56,7 @@ CW_METRIC_DIMENSION_SERVICE_NAME_EC2 = 'ec2'
 CW_METRIC_DIMENSION_SERVICE_NAME_RDS = 'rds'
 CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA = 'lambda'
 CW_METRIC_DIMENSION_SERVICE_NAME_DYNAMODB = 'dynamodb'
+CW_METRIC_DIMENSION_SERVICE_NAME_KINESIS = 'kinesis'
 CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL = 'total'
 CW_METRIC_DIMENSION_CURRENCY_USD = 'USD'
 
@@ -64,6 +66,7 @@ SERVICE_RDS = 'rds'
 SERVICE_ELB = 'elasticloadbalancing'
 SERVICE_LAMBDA = 'lambda'
 SERVICE_DYNAMODB = 'dynamodb'
+SERVICE_KINESIS = 'kinesis'
 
 RESOURCE_LAMBDA_FUNCTION = 'function'
 RESOURCE_ELB = 'loadbalancer'
@@ -72,25 +75,18 @@ RESOURCE_RDS_DB_INSTANCE = 'db'
 RESOURCE_EBS_VOLUME = 'volume'
 RESOURCE_EBS_SNAPSHOT = 'snapshot'
 RESOURCE_DDB_TABLE = 'table'
+RESOURCE_STREAM = 'stream'
 
 SERVICE_RESOURCE_MAP = {SERVICE_EC2:[RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT, RESOURCE_EC2_INSTANCE],
                         SERVICE_RDS:[RESOURCE_RDS_DB_INSTANCE],
                         SERVICE_LAMBDA:[RESOURCE_LAMBDA_FUNCTION],
                         SERVICE_ELB:[RESOURCE_ELB],
-                        SERVICE_DYNAMODB:[RESOURCE_DDB_TABLE]
+                        SERVICE_DYNAMODB:[RESOURCE_DDB_TABLE],
+                        SERVICE_KINESIS:[RESOURCE_STREAM]
                         }
-
 
 #_/_/_/_/_/_/ default values - end _/_/_/_/_/_/
 
-
-
-"""
-Limitations (features not yet available):
-    - Calculates all NetworkOut metrics as 'out to the internet', since there is no way to know in near real-time
-      with CloudWath metrics the bytes destination. This would only be possible using VPC Flow Logs, which are not
-      available in near real-time.
-"""
 
 def handler(event, context):
     log.info("Received event {}".format(json.dumps(event)))
@@ -103,11 +99,10 @@ def handler(event, context):
     rdsCost = 0
     lambdaCost = 0
     ddbCost = 0
+    kinesisCost = 0
     totalCost = 0
 
     #First, get the tags we'll be searching for, from the CloudWatch scheduled event
-    #TODO: add support for multiple tags in a single event (beware this could increase function execution time)
-    #TODO: add support for lambda function qualifiers in CW Event.
     tagkey = ""
     tagvalue = ""
     if 'tag' in event:
@@ -120,8 +115,6 @@ def handler(event, context):
       log.info("Will search resources with the following tag:["+tagkey+"] - value["+tagvalue+"]")
 
     resource_manager = ResourceManager(tagkey, tagvalue)
-
-    lambdafunctions = resource_manager.get_resources(SERVICE_LAMBDA, RESOURCE_LAMBDA_FUNCTION)
 
     start, end = calculate_time_range()
 
@@ -193,19 +186,6 @@ def handler(event, context):
         except Exception as failure:
             log.error('Error processing ebs storage costs: %s', failure.message)
 
-    #Get total snapshot storage
-    #Will remove this functionality, since EBS Snapshot usage cannot be accurately calculated from the EC2 API
-    """
-    snapshot_gb_month = get_total_snapshot_storage(tagkey, tagvalue)
-    ebs_snapshot_cost = {}
-    if snapshot_gb_month:
-      ebs_snapshot_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, ebsSnapshotGbMonth=snapshot_gb_month))
-      if 'pricingRecords' in ebs_snapshot_cost: pricing_records.extend(ebs_snapshot_cost['pricingRecords'])
-      ec2Cost = ec2Cost + ebs_snapshot_cost['totalCost']
-    else:
-      log.info("Didn't find any tagged EBS snapshots")
-    """
-
 
     #Get tagged RDS DB instances
     #db_instances = get_db_instances_by_tag(tagkey, tagvalue)
@@ -259,6 +239,8 @@ def handler(event, context):
     #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
 
     #Lambda functions
+    #TODO: add support for lambda function qualifiers
+    lambdafunctions = resource_manager.get_resources(SERVICE_LAMBDA, RESOURCE_LAMBDA_FUNCTION)
     for func in lambdafunctions:
       executions = calculate_lambda_executions(start, end, func)
       avgduration = calculate_lambda_duration(start, end, func)
@@ -275,6 +257,7 @@ def handler(event, context):
       if executions and avgduration:
           try:
               #Note we're setting data transfer = 0, since we don't have a way to calculate it based on CW metrics alone
+              #TODO:call a single time and include a GB-s price dimension to the Lambda calculator
               lambdapdim = data.LambdaPriceDimension(region=region, requestCount=executions*calculate_forecast_factor(),
                                                 avgDurationMs=avgduration, memoryMb=memory, dataTranferOutInternetGb=0,
                                                 dataTranferOutIntraRegionGb=0, dataTranferOutInterRegionGb=0, toRegion='')
@@ -282,7 +265,6 @@ def handler(event, context):
               if 'pricingRecords' in lambda_func_cost: pricing_records.extend(lambda_func_cost['pricingRecords'])
               lambdaCost = lambdaCost + lambda_func_cost['totalCost']
 
-              #put_cw_metric_data(end, lambda_func_cost['totalCost'], CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, 'function-name' , fullname)
           except Exception as failure:
               log.error('Error processing Lambda costs: %s', failure.message)
       else:
@@ -299,15 +281,43 @@ def handler(event, context):
         log.info("Dynamo DB Provisioned Capacity Units - Table:{} Read:{} Write:{}".format(t.id, read, write))
         totalRead += read
         totalWrite += write
-    ddbpdim = data.DynamoDBPriceDimension(region=region, readCapacityUnitHours=totalRead*HOURS_DICT[FORECAST_PERIOD_MONTHLY],
-                                                         writeCapacityUnitHours=totalWrite*HOURS_DICT[FORECAST_PERIOD_MONTHLY])
-    ddbtable_cost = ddbpricing.calculate(ddbpdim)
-    if 'pricingRecords' in ddbtable_cost: pricing_records.extend(ddbtable_cost['pricingRecords'])
-    ddbCost = ddbCost + ddbtable_cost['totalCost']
+    #TODO: add support for storage
+    if totalRead and totalWrite:
+        ddbpdim = data.DynamoDBPriceDimension(region=region, readCapacityUnitHours=totalRead*HOURS_DICT[FORECAST_PERIOD_MONTHLY],
+                                                             writeCapacityUnitHours=totalWrite*HOURS_DICT[FORECAST_PERIOD_MONTHLY])
+        ddbtable_cost = ddbpricing.calculate(ddbpdim)
+        if 'pricingRecords' in ddbtable_cost: pricing_records.extend(ddbtable_cost['pricingRecords'])
+        ddbCost = ddbCost + ddbtable_cost['totalCost']
+
+
+    #Kinesis Streams
+    streams = resource_manager.get_resources(SERVICE_KINESIS, RESOURCE_STREAM)
+    totalShards = 0
+    totalExtendedRetentionCount = 0
+    totalPutPayloadUnits = 0
+    for s in streams:
+        log.info("Stream:[{}]".format(s.id))
+        tmpShardCount, tmpExtendedRetentionCount = get_kinesis_stream_shards(s.id)
+        totalShards += tmpShardCount
+        totalExtendedRetentionCount += tmpExtendedRetentionCount
+
+        totalPutPayloadUnits += calculate_kinesis_put_payload_units(start, end, s.id)
+
+    if totalShards:
+        kinesispdim = data.KinesisPriceDimension(region=region,
+                                                 shardHours=totalShards*HOURS_DICT[FORECAST_PERIOD_MONTHLY],
+                                                 extendedDataRetentionHours=totalExtendedRetentionCount*HOURS_DICT[FORECAST_PERIOD_MONTHLY],
+                                                 putPayloadUnits=totalPutPayloadUnits*calculate_forecast_factor())
+        stream_cost = kinesispricing.calculate(kinesispdim)
+        if 'pricingRecords' in stream_cost: pricing_records.extend(stream_cost['pricingRecords'])
+
+        kinesisCost = kinesisCost + stream_cost['totalCost']
+
+
 
 
     #Do this after all calculations for all supported services have concluded
-    totalCost = ec2Cost + rdsCost + lambdaCost + ddbCost
+    totalCost = ec2Cost + rdsCost + lambdaCost + ddbCost + kinesisCost
     result['pricingRecords'] = pricing_records
     result['totalCost'] = round(totalCost,2)
     result['forecastPeriod']=DEFAULT_FORECAST_PERIOD
@@ -320,6 +330,7 @@ def handler(event, context):
       put_cw_metric_data(end, rdsCost, CW_METRIC_DIMENSION_SERVICE_NAME_RDS, tagkey, tagvalue)
       put_cw_metric_data(end, lambdaCost, CW_METRIC_DIMENSION_SERVICE_NAME_LAMBDA, tagkey, tagvalue)
       put_cw_metric_data(end, ddbCost, CW_METRIC_DIMENSION_SERVICE_NAME_DYNAMODB, tagkey, tagvalue)
+      put_cw_metric_data(end, kinesisCost, CW_METRIC_DIMENSION_SERVICE_NAME_KINESIS, tagkey, tagvalue)
       put_cw_metric_data(end, totalCost, CW_METRIC_DIMENSION_SERVICE_NAME_TOTAL, tagkey, tagvalue)
 
 
@@ -626,10 +637,80 @@ def get_ddb_capacity_units(tablename):
             write = r['Table']['ProvisionedThroughput']['WriteCapacityUnits']
         return read, write
 
-    except ClientError as e:
+    except Exception as e:
         log.error("{}".format(e))
 
 
+def get_kinesis_stream_shards(streamName):
+    shardCount = 0
+    extendedRetentionCount = 0
+    try:
+        #TODO: add support for streams with >100 shards
+        #TODO: add support for detailed metrics
+        response = kinesisclient.describe_stream(StreamName=streamName)
+        shardCount = len(response['StreamDescription']['Shards'])
+        if response['StreamDescription']['RetentionPeriodHours'] > 24:
+            extendedRetentionCount = shardCount
+
+    except Exception as e:
+        log.error("{}".format(e))
+
+    return shardCount, extendedRetentionCount
+
+"""
+This function calculates an approximation of PUT payload units, based on CloudWatch metrics.
+Unfortunately, there is no direct CloudWatch metric that returns the PUT Payload Units for a stream.
+https://aws.amazon.com/kinesis/streams/pricing/
+PUT Payload Units are calculated in 25KB chunks and CloudWatch metrics return the number of records inserted
+as well as the total bytes entering the stream. There is no accurate way to calculate the number of
+25KB chunks going into the stream.
+
+"""
+def calculate_kinesis_put_payload_units(start, end, streamName):
+    totalRecords = 0
+    totalBytesAvg = 0
+    totalPutPayloadUnits = 0
+    chunkCount = 0 #Kinesis charges for PUT Payload Units in chunks of 25KB
+
+
+    try:
+        incomingRecords = cwclient.get_metric_statistics(
+                Namespace='AWS/Kinesis',
+                MetricName='IncomingRecords',
+                Dimensions=[{'Name': 'StreamName','Value': streamName}],
+                StartTime=start,
+                EndTime=end,
+                Period=60*METRIC_WINDOW,
+                Statistics = ['Sum']
+            )
+
+        for datapoint in incomingRecords['Datapoints']:
+          if 'Sum' in datapoint: totalRecords = totalRecords + datapoint['Sum']
+
+        incomingBytes = cwclient.get_metric_statistics(
+                Namespace='AWS/Kinesis',
+                MetricName='IncomingBytes',
+                Dimensions=[{'Name': 'StreamName','Value': streamName}],
+                StartTime=start,
+                EndTime=end,
+                Period=60*METRIC_WINDOW,
+                Statistics = ['Average']
+            )
+
+        for datapoint in incomingBytes['Datapoints']:
+          if 'Average' in datapoint:
+              chunkCount += int(math.ceil(datapoint['Average']/25000))
+
+        bytesDatapoints = len(incomingBytes['Datapoints'])
+        if not bytesDatapoints: bytesDatapoints = 1 #avoid zerodiv
+        totalPutPayloadUnits = totalRecords * chunkCount/bytesDatapoints
+        log.info("get_kinesis_stream_puts - incomingRecords:[{}] - chunkAvg:[{}] - totalPutPayloadUnits:[{}]".format(totalRecords, chunkCount/bytesDatapoints, totalPutPayloadUnits))
+
+    except Exception as e:
+        log.error("{}".format(e))
+
+
+    return totalPutPayloadUnits
 
 
 def calculate_time_range():
@@ -659,10 +740,12 @@ def init_clients(context):
     global elbclient
     global lambdaclient
     global ddbclient
+    global kinesisclient
     global cwclient
     global tagsclient
     global region
     global awsaccount
+
 
     arn = context.invoked_function_arn
     region = arn.split(":")[3] #ARN format is arn:aws:lambda:us-east-1:xxx:xxxx
@@ -672,6 +755,7 @@ def init_clients(context):
     elbclient = boto3.client('elb',region)
     lambdaclient = boto3.client('lambda',region)
     ddbclient = boto3.client('dynamodb',region)
+    kinesisclient = boto3.client('kinesis',region)
     cwclient = boto3.client('cloudwatch', region)
     tagsclient = boto3.client('resourcegroupstaggingapi', region)
 
@@ -709,12 +793,12 @@ class ResourceManager():
         service = arn.split(":")[2]
         resourceId = ''
         #See http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html for different patterns in ARNs
-        for service in ('ec2', 'elasticloadbalancing', 'dynamodb'):
-            for type in ('instance','volume','snapshot','loadbalancer','table'):
+        for service in (SERVICE_EC2, SERVICE_ELB, SERVICE_DYNAMODB, SERVICE_KINESIS):
+            for type in ('instance','volume','snapshot','loadbalancer','table', 'stream'):
                 if ':'+service+':' in arn and ':'+type+'/' in arn:
                     resourceId = arn.split(':'+type+'/')[1]
                     return self.Resource(service, type, resourceId, arn)
-        for service in ('rds', 'lambda'):
+        for service in (SERVICE_RDS, SERVICE_LAMBDA):
             for type in ('db', 'function'):
                 if ':'+service+':' in arn and ':'+type+':' in arn:
                     resourceId = arn.split(':'+type+':')[1]

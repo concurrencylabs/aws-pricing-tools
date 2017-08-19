@@ -6,6 +6,8 @@ from ..ec2 import pricing as ec2pricing
 from ..s3 import pricing as s3pricing
 from ..rds import pricing as rdspricing
 from ..awslambda import pricing as lambdapricing
+from ..dynamodb import pricing as ddbpricing
+from ..kinesis import pricing as kinesispricing
 
 
 
@@ -55,6 +57,11 @@ def compare(**kwargs):
         p = rdspricing.calculate(models.RdsPriceDimension(**kwargs))
       if service == consts.SERVICE_LAMBDA:
         p = lambdapricing.calculate(models.LambdaPriceDimension(**kwargs))
+      if service == consts.SERVICE_DYNAMODB:
+        p = ddbpricing.calculate(models.DynamoDBPriceDimension(**kwargs))
+      if service == consts.SERVICE_KINESIS:
+        p = kinesispricing.calculate(models.KinesisPriceDimension(**kwargs))
+
 
       print (json.dumps(p, indent=True))
       #Only append records for those combinations that exist in the PriceList API

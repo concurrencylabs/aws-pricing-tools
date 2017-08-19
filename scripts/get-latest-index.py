@@ -10,10 +10,10 @@ __location__ = os.path.dirname(os.path.realpath(__file__))
 dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator", "data")
 
 
-
 def main(argv):
 
-  SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA, consts.SERVICE_DYNAMODB, consts.SERVICE_ALL)
+  SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA,
+                        consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_ALL)
   SUPPORTED_FORMATS = ('json','csv')
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
   
@@ -105,7 +105,7 @@ def remove_metadata(index_filename):
     mf.write(metadata_json)
 
 """
-Index files are too large. For example, the one for EC2 has more than 160K records.
+Some index files are too large. For example, the one for EC2 has more than 160K records.
 In order to make price lookup more efficient, awspricecalculator splits the
 index based on a combination of region, term type and product family. Each partition
 has a key, which is used by tinydb to load smaller files as databases that can be

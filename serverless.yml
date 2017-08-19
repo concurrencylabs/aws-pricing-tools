@@ -36,6 +36,8 @@ package:
     - awspricecalculator/data/rds/index.*
     - awspricecalculator/data/s3/index.*
     - awspricecalculator/data/lambda/index.*
+    - awspricecalculator/data/dynamodb/index.*
+    - awspricecalculator/data/kinesis/index.*    
     - scripts/**
     - test/**
     - cloudformation/**

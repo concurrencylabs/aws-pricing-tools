@@ -6,14 +6,18 @@ This repository uses the AWS Price List API to implement price calculation utili
 
 Supported services:
 * EC2
+* ELB
+* EBS
 * RDS
 * Lambda
+* Dynamo DB
+* Kinesis
 
 Visit the following URLs for more details:
 
 https://www.concurrencylabs.com/blog/aws-pricing-lambda-realtime-calculation-function/
 https://www.concurrencylabs.com/blog/aws-lambda-cost-optimization-tools/
-
+https://www.concurrencylabs.com/blog/calculate-near-realtime-pricing-serverless-applications/
 
 The code is structured in the following way:
 
@@ -23,12 +27,13 @@ is called by Lambda functions or other Python scripts.
 
 **functions**. This is where our Lambda functions live. Functions are packaged using the Serverless framework.
 
-**scripts**. Here are some Python scripts to help with management and price optimizations.
+**scripts**. Here are some Python scripts to help with management and price optimizations. See README.md in the scripts
+folder for more details.
 
 
-### Available Lambda functions:
+## Available Lambda functions:
 
-**calculate-near-realtime**
+### calculate-near-realtime
 This function is called by a schedule configured using CloudWatch Events. 
 The function receives a JSON object configured in the schedule. The JSON object supports the following format:
 
@@ -52,6 +57,19 @@ cover a number of combinations that might or might not be suitable to all users 
 leave it untagged.
 
 
+**Limitations**
+The function doesn't support cost estimations for the following:
+* EC2 data transfer for instances not registered to an ELB
+* EC2 Reserved Instances
+* EBS Snapshots
+* RDS data trasfer
+* Lambda data transfer
+* Kinesis PUT Payload Units are partially calculated based on CloudWatch metrics (there's no 100% accuracy for this price dimension)
+* Dynamo DB storage
+* Dynamo DB data transfer
+
+
+
 
 ## Install - using CloudFormation (recommended)
 
@@ -72,7 +90,7 @@ the following dimensions:
 
 * Currency: USD
 * ForecastPeriod: monthly
-* ServiceName: ec2, rds, lambda
+* ServiceName: ec2, rds, lambda, kinesis, dynamodb
 * Tag: mykey=myvalue
 
 
@@ -81,7 +99,7 @@ the following dimensions:
 
 ### Updating to the latest version using CloudFormation
 
-This function will be updated regularly in order to fix bugs and also to add more functionality.
+This function will be updated regularly in order to fix bugs, update AWS Price List data and also to add more functionality.
 This means you will likely have to update the function at some point. I recommend installing
 the function using the CloudFormation template, since it will simplify the update process.
 
@@ -104,13 +122,13 @@ And that's it. CloudFormation will update the function with the latest code.
 
 
 
-## Install - Manual steps
+## Install Locally (if you want to modify it) - Manual steps
 
 
 ### Clone the repo 
 
 ```
-git clone https://github.com/ConcurrenyLabs/aws-pricing-tools aws-pricing-tools
+git clone https://github.com/concurrencylabs/aws-pricing-tools aws-pricing-tools
 ```
 
 
