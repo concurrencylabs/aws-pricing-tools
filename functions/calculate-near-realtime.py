@@ -1,20 +1,27 @@
 from __future__ import print_function
-import datetime, math
+import datetime
 import json
-import logging, os, sys
+import logging
+import math
+import os
+import sys
+
 import boto3
 from botocore.exceptions import ClientError
+
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+
+__location__ = os.path.dirname(os.path.realpath(__file__))
+sys.path.append(os.path.join(__location__, "../"))
+sys.path.append(os.path.join(__location__, "../vendored"))
+
 import awspricecalculator.ec2.pricing as ec2pricing
 import awspricecalculator.rds.pricing as rdspricing
 import awspricecalculator.awslambda.pricing as lambdapricing
 import awspricecalculator.dynamodb.pricing as ddbpricing
 import awspricecalculator.kinesis.pricing as kinesispricing
-
 import awspricecalculator.common.models as data
-
-
-log = logging.getLogger()
-log.setLevel(logging.INFO)
 
 ec2client = None
 rdsclient = None
@@ -24,11 +31,6 @@ dddbclient = None
 kinesisclient = None
 cwclient = None
 tagsclient = None
-
-__location__ = os.path.dirname(os.path.realpath(__file__))
-site_pkgs = os.path.join(os.path.split(__location__)[0], "lib", "python2.7", "site-packages")
-sys.path.append(site_pkgs)
-
 
 #_/_/_/_/_/_/ default_values - start _/_/_/_/_/_/
 
