@@ -17,6 +17,26 @@ provider:
   name: aws
   runtime: python2.7
 
+  # you can add statements to the Lambda function's IAM Role here
+  iamRoleStatements:
+    - Effect: "Allow"
+      Action:
+        - cloudwatch:*
+        - ec2:Describe*
+        - elasticloadbalancing:Describe*
+        - autoscaling:Describe*
+        - rds:Describe*
+        - rds:List*
+        - dynamodb:Describe*
+        - dynamodb:List*
+        - kinesis:Describe*
+        - kinesis:List*
+        - lambda:GetFunctionConfiguration
+        - tag:getResources
+        - tag:getTagKeys
+        - tag:getTagValues
+      Resource: "*"
+
 # you can overwrite defaults here
 #defaults:
 #  stage: dev
@@ -37,16 +57,14 @@ package:
     - awspricecalculator/data/s3/index.*
     - awspricecalculator/data/lambda/index.*
     - awspricecalculator/data/dynamodb/index.*
-    - awspricecalculator/data/kinesis/index.*    
+    - awspricecalculator/data/kinesis/index.*
     - scripts/**
     - test/**
     - cloudformation/**
     - readme.txt
 
   include:
-    - lib/python2.7/site-packages/tinydb/**
-
-
+    - vendored
 
 functions:
   nearrealtimepricing:
@@ -54,20 +72,14 @@ functions:
     name: calculate-near-realtime-pricing
     timeout: 300
     memory: 1024
-
-
-#   NOTE: I decided to not use this feature, since Serverless doesn't support 
-#           sending a constant JSON value to the Lambda function, which is a feature
-#           in CloudWatch Events.
-#   
-#   you can add any of the following events
-#   events:
-#     - http:
-#         path: users/create
-#         method: get
-#     - s3: ${bucket}
-#     - schedule: rate(10 minutes)
-#     - sns: greeter-topic
+    events:
+      - schedule:
+          rate: rate(5 minutes)
+          enabled: true
+          input:
+            tag:
+              key: ${env:PRICING_TAG_KEY}
+              value: ${env:PRICING_TAG_VALUE}
 
 # you can add CloudFormation resource templates here
 #resources:
