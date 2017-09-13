@@ -1,5 +1,5 @@
 from __future__ import print_function
-import datetime, math
+import datetime
 import json
 import logging, os, sys
 import boto3

@@ -178,7 +178,7 @@ def main(argv):
                 base_usage.memUsedPct,base_usage.projectedCost, base_usage.projectedPeriod)
 
     if memoptims:
-        print "\nThe following Lambda memory configurations will save you money:"
+        print "\nThe following Lambda memory configurations could save you money (assuming constant execution time)"
         labels = ['memSizeMb', 'memUsedPct', 'cost', 'timePeriod', 'savingsAmt']
         print "\n"+ResultsTable(memoptims,labels).dict2md()
     if durationoptims:

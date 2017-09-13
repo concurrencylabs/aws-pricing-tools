@@ -10,6 +10,8 @@ pip-selfcheck.json
 .idea/*
 .serverless/*
 
+awspricecalculator/data
+
 #temporarily out
 awspricecalculator/s3*
 awspricecalculator/common/utils.py
@@ -18,4 +20,7 @@ scripts/rds-pricing.py
 scripts/s3-pricing.py
 scripts/lambda-pricing.py
 scripts/dynamodb-pricing.py
+scripts/kinesis-pricing.py
 scripts/context.py
+scripts/propagate-lambda-code.py
+
