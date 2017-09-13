@@ -3,8 +3,8 @@ import json
 import logging
 from ..common import consts, phelper
 from ..common.models import PricingResult
-import tinydb
 
+import tinydb
 
 
 log = logging.getLogger()

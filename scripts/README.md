@@ -28,9 +28,7 @@ python get-latest-index.py --service=<ec2|rds|lambda|all>
 
 The script takes a few seconds to execute since some index files are a little heavy (like the EC2 one).
 
-I recommend executing with the option `--service=all` and subscribing to
-the AWS Price List API change notifications.
-
+I recommend executing with the option `--service=all` and subscribing to the AWS Price List API change notifications.
 
 
 ### Lambda Optimization Recommendations

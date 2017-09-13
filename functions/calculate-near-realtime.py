@@ -6,15 +6,17 @@ import math
 import os
 import sys
 
+log = logging.getLogger()
+log.setLevel(logging.INFO)
+
 import boto3
 from botocore.exceptions import ClientError
 
-log = logging.getLogger()
-log.setLevel(logging.INFO)
 
 __location__ = os.path.dirname(os.path.realpath(__file__))
 sys.path.append(os.path.join(__location__, "../"))
 sys.path.append(os.path.join(__location__, "../vendored"))
+
 
 import awspricecalculator.ec2.pricing as ec2pricing
 import awspricecalculator.rds.pricing as rdspricing

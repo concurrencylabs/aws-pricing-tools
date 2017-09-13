@@ -124,6 +124,11 @@ And that's it. CloudFormation will update the function with the latest code.
 
 ## Install Locally (if you want to modify it) - Manual steps
 
+If you only want to install the Lambda function, you don't need to follow the steps below, just follow
+the instructions in the "Install - Using CloudFormation" section above.
+
+If you want to setup a dev environment, run a local copy, make some modifications and then install in your AWS account, then keep reading...
+
 
 ### Clone the repo
 
@@ -132,7 +137,7 @@ git clone https://github.com/concurrencylabs/aws-pricing-tools aws-pricing-tools
 ```
 
 
-### (Optional) Create an isolated Python environment using virtualenv
+### (Optional, but recommended) Create an isolated Python environment using virtualenv
 
 It's always a good practice to create an isolated environment so we have greater control over
 the dependencies in our project, including the Python runtime.
@@ -154,25 +159,30 @@ virtualenv aws-pricing-tools -p python2.7
 ```
 
 After your environment is created, it's time to activate it. Go to the recently created
-folder of your project (i.e. aws-pricing) and from there run:
+folder of your project (i.e. aws-pricing-tools) and from there run:
 
 ```
 source bin/activate
 ```
 
 
-### Install Requirements to "./vendored/" Directory
+### Install Requirements
 
 From your project root folder, run:
 
 ```
-pip install -r requirements.txt -t vendored
+./install.sh
 ```
 
-This will install the following dependencies:
+This will install the following dependencies to the ```vendored``` directory:
 
-* **tinydb** - The code in this repo queries the Price List API csv records
-using the tinydb library.
+* **tinydb** - The code in this repo queries the Price List API csv records using the tinydb library.
+* **numpy** - Used for statistics in the lambda optimization script
+
+... and the following dependencies in your default site-packages location:
+
+* **python-local-lambda** - lets me test my Lambda functions locally using test events in my workstation.
+* **boto3** - AWS Python SDK to call AWS APIs.
 
 
 ### Install the Serverless Framework
@@ -224,18 +234,7 @@ export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
 ```
 
 
-### (Optional) Test the function locally
-
-**Install Development Requirements**
-
-From your project root folder, run:
-
-```
-pip install -r requirements-dev.txt
-```
-
-* **python-local-lambda** - lets me test my Lambda functions locally using test events in my workstation.
-* **boto3** - AWS Python SDK to call AWS APIs.
+### How to test the function locally
 
 
 **Download the latest AWS Price List API Index file**
@@ -248,7 +247,7 @@ Price List API index.
 Also, this index file is constantly updated by AWS. I recommend subscribing to the AWS Price List API
 change notifications.
 
-In order to download the latest index file, go to the "scripts" folder and run:
+In order to download the latest index file, go to the ```scripts```` folder and run:
 
 ```
 python get-latest-index.py --service=all

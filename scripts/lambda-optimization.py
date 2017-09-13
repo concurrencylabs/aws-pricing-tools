@@ -4,8 +4,11 @@ import argparse
 import traceback
 import boto3
 from botocore.exceptions import ClientError
-import math, numpy
+import math
 sys.path.insert(0, os.path.abspath('..'))
+sys.path.insert(0, os.path.abspath('../vendored'))
+
+import numpy
 
 import awspricecalculator.awslambda.pricing as lambdapricing
 import awspricecalculator.common.models as data
@@ -70,33 +73,24 @@ def main(argv):
         We're interested in entries that look like this:
            REPORT RequestId: 7686bf2c-2f79-11e7-b693-97868a5db36b	Duration: 5793.53 ms	Billed Duration: 5800 ms 	Memory Size: 448 MB	Max Memory Used: 24 MB
         """
+
         if 'logStreams' in logstreams:
             print("Number of logstreams found:[{}]".format(len(logstreams['logStreams'])))
 
-            if 'nextToken' in logstreams:
-                nextLogstreamToken = logstreams['nextToken']
-                logstreamsargs['nextToken']=nextLogstreamToken
-            else:
-                nextLogstreamToken = False
-                logstreamsargs.pop('nextToken')
+            nextLogstreamToken = logstreams.get('nextToken',False)
+            if nextLogstreamToken: logstreamsargs['nextToken']=nextLogstreamToken
+            else:logstreamsargs.pop('nextToken',False)
 
+            #Go through all logstreams in descending order
             for ls in logstreams['logStreams']:
-                eventsNextToken = True
-                while eventsNextToken:
-                    logeventsargs = {'logGroupName':log_group_name, 'logStreamName':ls['logStreamName'],
-                                     'startFromHead':True, 'startTime':windowStartTime}
+                nextEventsForwardToken = True
+                logeventsargs = {'logGroupName':log_group_name, 'logStreamName':ls['logStreamName'],
+                                 'startFromHead':True, 'startTime':windowStartTime}
+                while nextEventsForwardToken:
                     logevents = logsclient.get_log_events(**logeventsargs)
-
-                    if 'nextToken' in logevents:
-                        eventsNextToken = logevents['nextToken']
-                        logeventsargs['nextToken']=eventsNextToken
-                    else:
-                        eventsNextToken = False
-
                     if 'events' in logevents:
                         if len(logevents['events']):
-
-                            print "\nEvents for logGroup:[{}] - logstream:[{}]".format(log_group_name, ls['logStreamName'])
+                            print "\nEvents for logGroup:[{}] - logstream:[{}] - nextForwardToken:[{}]".format(log_group_name, ls['logStreamName'],nextEventsForwardToken)
                             for e in logevents['events']:
                                 #Extract lambda execution duration and memory utilization from "REPORT" log events
                                 if 'REPORT RequestId:' in e['message']:
@@ -114,9 +108,11 @@ def main(argv):
                                     print "mem_used:[{}] - mem_size:[{}] - timestampMs:[{}] -  timestamp:[{}]".format(mem_used,prov_mem_size, e['timestamp'], time.strftime(ts_format, time.gmtime(e['timestamp']/1000)))
                                     print e['message']
                                     i += 1
-                        else:
-                            print ("Did not find log events for logstream:[{}] - startTime:[{}]".format(ls['logStreamName'],time.strftime(ts_format, time.gmtime(windowStartTime/1000))))
-                            nextLogstreamToken = False
+                        else: break
+
+                    nextEventsForwardToken = logevents.get('nextForwardToken',False)
+                    if nextEventsForwardToken: logeventsargs['nextToken']=nextEventsForwardToken
+                    else: logeventsargs.pop('nextToken',False)
 
 
 
@@ -182,7 +178,7 @@ def main(argv):
         labels = ['memSizeMb', 'memUsedPct', 'cost', 'timePeriod', 'savingsAmt']
         print "\n"+ResultsTable(memoptims,labels).dict2md()
     if durationoptims:
-        print "\n\nCan you make your function execute faster? The following Lambda execution durations will save you money:"
+        print "\n\nCan you make your function execute faster? The following Lambda execution durations will save you money (assuming memory allocation remains constant):"
         labels = ['durationMs', 'cost', 'timePeriod', 'savingsAmt']
         print "\n"+ResultsTable(durationoptims,labels).dict2md()
     print "------------------------------------------------------------------------------------"
