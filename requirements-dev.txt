@@ -1,0 +1,5 @@
+-r ./requirements.txt
+
+numpy
+boto3
+python-lambda-local

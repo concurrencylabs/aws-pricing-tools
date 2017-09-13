@@ -1,4 +1,1 @@
-tinydb
-numpy
-boto3
-python-lambda-local
+tinydb==3.4.1

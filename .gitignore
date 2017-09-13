@@ -5,12 +5,17 @@ lib
 include
 pip-selfcheck.json
 # We don't need compiled Python artifacts in the repo
+__pycache__
+*egg-info
 *.pyc
 *.pyo
 .idea/*
 .serverless/*
 
 awspricecalculator/data
+
+# ignore vendored files
+vendored
 
 #temporarily out
 awspricecalculator/s3*

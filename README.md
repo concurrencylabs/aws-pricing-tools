@@ -34,13 +34,13 @@ folder for more details.
 ## Available Lambda functions:
 
 ### calculate-near-realtime
-This function is called by a schedule configured using CloudWatch Events. 
+This function is called by a schedule configured using CloudWatch Events.
 The function receives a JSON object configured in the schedule. The JSON object supports the following format:
 
 Tag-based: ```{"tag":{"key":"mykey","value":"myvalue"}}```.
 The function finds resources with the corresponding tag, gets current usage using CloudWatch metrics,
-projects usage into a longer time period (a month), calls pricecalculator to calculate price 
-and puts results in CloudWatch metrics under the namespace ```ConcurrencyLabs/Pricing/NearRealTimeForecast```. 
+projects usage into a longer time period (a month), calls pricecalculator to calculate price
+and puts results in CloudWatch metrics under the namespace ```ConcurrencyLabs/Pricing/NearRealTimeForecast```.
 Supported services are EC2, EBS, ELB, RDS and Lambda. Not all price dimensions are supported for all services, though.
 
 You can configure as many CloudWatch Events as you want, each one with a different tag.
@@ -50,9 +50,9 @@ You can configure as many CloudWatch Events as you want, each one with a differe
 * The function only considers for price calculation those resources that are tagged. For example, if there is an untagged ELB
 with tagged EC2 instances, the function will only consider the EC2 instances for the calculation.
 If there is a tagged ELB with untagged EC2 instances, the function will only calculate price
-for the ELB. 
+for the ELB.
 * The behavior described above is intended for simplicity, otherwise the function would have to
-cover a number of combinations that might or might not be suitable to all users of the function. 
+cover a number of combinations that might or might not be suitable to all users of the function.
 * To keep it simple, if you want a resource to be included in the calculation, then tag it. Otherwise
 leave it untagged.
 
@@ -80,7 +80,7 @@ For example: TagKey:stack, TagValue:mywebapp
 
 Click here to get started:
 
-<a href="https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=near-realtime-pricing-calculator&templateURL=http://s3.amazonaws.com/concurrencylabs-cfn-templates/lambda-near-realtime-pricing/function-plus-schedule.json" target="new"><img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png" alt="Launch Stack"></a> 
+<a href="https://console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/new?stackName=near-realtime-pricing-calculator&templateURL=http://s3.amazonaws.com/concurrencylabs-cfn-templates/lambda-near-realtime-pricing/function-plus-schedule.json" target="new"><img src="https://s3.amazonaws.com/cloudformation-examples/cloudformation-launch-stack.png" alt="Launch Stack"></a>
 
 
 ### Metrics
@@ -125,14 +125,14 @@ And that's it. CloudFormation will update the function with the latest code.
 ## Install Locally (if you want to modify it) - Manual steps
 
 
-### Clone the repo 
+### Clone the repo
 
 ```
 git clone https://github.com/concurrencylabs/aws-pricing-tools aws-pricing-tools
 ```
 
 
-### Create an isolated Python environment using virtualenv
+### (Optional) Create an isolated Python environment using virtualenv
 
 It's always a good practice to create an isolated environment so we have greater control over
 the dependencies in our project, including the Python runtime.
@@ -161,21 +161,18 @@ source bin/activate
 ```
 
 
-### Install Requirements
+### Install Requirements to "./vendored/" Directory
 
 From your project root folder, run:
 
 ```
-pip install -r requirements.txt 
+pip install -r requirements.txt -t vendored
 ```
 
 This will install the following dependencies:
 
-* **python-local-lambda** - lets me test my Lambda functions locally using test events in my workstation.
-* **boto3** - AWS Python SDK to call AWS APIs.
 * **tinydb** - The code in this repo queries the Price List API csv records
-using the tinydb library. 
-
+using the tinydb library.
 
 
 ### Install the Serverless Framework
@@ -183,7 +180,7 @@ using the tinydb library.
 ![ServerlessLogo](https://www.concurrencylabs.com/img/posts/11-ec2-pricing-lambda/serverless_logo.png)
 
 
-Since the pricing tool runs on AWS Lambda, I decided to use the <a href="http://serverless.com/" target="new">Serverless Framework</a>. 
+Since the pricing tool runs on AWS Lambda, I decided to use the <a href="http://serverless.com/" target="new">Serverless Framework</a>.
 This framework enormously simplifies the development, configuration and deployment of Function as a Service (a.k.a. FaaS, or "serverless")
 code into AWS Lambda.
 
@@ -209,8 +206,8 @@ serverless --version
 The steps in this post were tested using version ```1.6.1```
 
 
-4. Serverless needs access to your AWS account, so it can create and update AWS Lambda 
-functions, among other operations. Therefore, you have to make sure Serverless can access 
+4. Serverless needs access to your AWS account, so it can create and update AWS Lambda
+functions, among other operations. Therefore, you have to make sure Serverless can access
 a set of IAM  User credentials. Follow <a href="https://github.com/serverless/serverless/blob/master/docs/guide/provider-account-setup.md" target="new">these instructions</a>.
 In the long term, you should make sure these credentials are limited to only the API operations
 Serverless requires - avoid Administrator access, which is a bad security and operational practice.
@@ -219,9 +216,7 @@ Serverless requires - avoid Administrator access, which is a bad security and op
 5. Checkout the code from this repo into your virtualenv folder.
 
 
-### Testing the function locally
-
-**Set environment variables**
+### Set environment variables
 
 ```
 export AWS_DEFAULT_PROFILE=<your-aws-cli-profile>
@@ -229,16 +224,29 @@ export AWS_DEFAULT_REGION=<us-east-1|us-west-2|etc.>
 ```
 
 
+### (Optional) Test the function locally
+
+**Install Development Requirements**
+
+From your project root folder, run:
+
+```
+pip install -r requirements-dev.txt
+```
+
+* **python-local-lambda** - lets me test my Lambda functions locally using test events in my workstation.
+* **boto3** - AWS Python SDK to call AWS APIs.
+
 
 **Download the latest AWS Price List API Index file**
 
-The code needs a local copy of the the AWS Price List API index file. 
+The code needs a local copy of the the AWS Price List API index file.
 The GitHub repo doesn't come with the index file, therefore you have to
 download it the first time you run your code and every time AWS publishes a new
 Price List API index.
 
 Also, this index file is constantly updated by AWS. I recommend subscribing to the AWS Price List API
-change notifications. 
+change notifications.
 
 In order to download the latest index file, go to the "scripts" folder and run:
 
@@ -263,4 +271,10 @@ python-lambda-local functions/calculate-near-realtime.py test/events/constant-ta
 ```
 
 
+### Deploy the Serverless Project
 
+From your project root folder, run:
+
+```
+serverless deploy
+```
