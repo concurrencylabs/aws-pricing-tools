@@ -131,13 +131,12 @@ def split_index(service):
         for row in pricelist:
             indexKey = ''
             if x==0: fieldnames=row.keys()
-            if 'Location Type' in row:
-                if row['Location Type'] == 'AWS Region':
-                    indexRegion = row['Location']
-            if 'Product Family' in row:
-                if row['Product Family']== consts.PRODUCT_FAMILY_DATA_TRANSFER:
-                    indexRegion = row['From Location']
+            if row.get('Location Type','') == 'AWS Region':
+                indexRegion = row['Location']
+            if row.get('Product Family','')== consts.PRODUCT_FAMILY_DATA_TRANSFER:
+                indexRegion = row['From Location']
 
+            #Determine the index partition the current row belongs to and append it to the corresponding array
             indexKey = phelper.create_file_key(indexRegion,row['TermType'],row['Product Family'])
             if indexKey in indexDict:
                 indexDict[indexKey].append(row)
@@ -150,26 +149,24 @@ def split_index(service):
             if usageGroup not in productFamilies[productFamily]:
                 productFamilies[productFamily].append(usageGroup)
 
-
             x += 1
 
     print ("productFamilies:{}".format(productFamilies))
     #print "metadata: {}".format(metadata)
 
     i = 0
+    #Create csv files based on the partitions that were calculated when scanning the main index.csv file
     for f in indexDict.keys():
         if indexDict[f]:
             i += 1
             print "Writing file for key: [{}]".format(f)
             with open(get_index_file_name(service, f, 'csv'),'w') as csvfile:
-                writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+                writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel', quoting=csv.QUOTE_ALL)
                 writer.writeheader()
                 for r in indexDict[f]:
                     writer.writerow(r)
 
     print "Number of files written: [{}]".format(i)
-
-
 
 
 def get_index_file_name(service, name, format):

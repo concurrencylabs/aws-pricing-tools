@@ -70,7 +70,7 @@ def compare(**kwargs):
 
  #Sort by EC2 Operating System
   if sortCriteria == consts.SORT_CRITERIA_OS:
-    tableCriteriaHeader = "Sorted by total cost by Operating System in region ["+kwargs['region']+"]\nOS\t"
+    tableCriteriaHeader = "Total cost sorted by Operating System in region ["+kwargs['region']+"]\nOS\t"
     for o in consts.SUPPORTED_EC2_OPERATING_SYSTEMS:
       kwargs['operatingSystem']=o
       if service == consts.SERVICE_EC2:
@@ -78,10 +78,26 @@ def compare(**kwargs):
 
       result.append((p['totalCost'],o))
 
+  #Sort by RDS DB Instance Class
+  if sortCriteria == consts.SORT_CRITERIA_DB_INSTANCE_CLASS:
+    tableCriteriaHeader = "Total cost sorted by DB Instance Class in region ["+kwargs['region']+"]\nDB Instance Class\t"
+    for ic in consts.SUPPORTED_RDS_INSTANCE_CLASSES:
+      kwargs['dbInstanceClass']=ic
+      p = rdspricing.calculate(models.RdsPriceDimension(**kwargs))
+      result.append((p['totalCost'],ic))
+
+  #Sort by RDS DB Engine
+  if sortCriteria == consts.SORT_CRITERIA_DB_ENGINE:
+    tableCriteriaHeader = "Total cost sorted by DB Engine in region ["+kwargs['region']+"]\nDB Engine\t"
+    for e in consts.RDS_SUPPORTED_DB_ENGINES:
+      kwargs['engine']=e
+      p = rdspricing.calculate(models.RdsPriceDimension(**kwargs))
+      result.append((p['totalCost'],e))
+
 
   #Sort by Lambda memory
   if sortCriteria == consts.SORT_CRITERIA_LAMBDA_MEMORY:
-    tableCriteriaHeader = "Sorted by total Allocated Memory in region ["+kwargs['region']+"]\nMemory\t"
+    tableCriteriaHeader = "Total cost sorted Allocated Memory in region ["+kwargs['region']+"]\nMemory\t"
     for m in consts.LAMBDA_MEM_SIZES:
       kwargs['memoryMb']=m
       p = lambdapricing.calculate(models.LambdaPriceDimension(**kwargs))
@@ -91,7 +107,7 @@ def compare(**kwargs):
   #Sort by S3 Storage Class
   if sortCriteria == consts.SORT_CRITERIA_S3_STORAGE_CLASS:
     #TODO: Use criteria_array for all sort calculations
-    tableCriteriaHeader = "Sorted by S3 Storage Class in region ["+kwargs['region']+"]\nStorage Class\t"
+    tableCriteriaHeader = "Tocal cost sorted by S3 Storage Class in region ["+kwargs['region']+"]\nStorage Class\t"
     criteria_array = consts.SUPPORTED_S3_STORAGE_CLASSES
     for c in criteria_array:
       kwargs['storageClass']=c
@@ -101,25 +117,24 @@ def compare(**kwargs):
 
   sorted_result = sorted(result)
   print ("sorted_result: {}".format(sorted_result))
-  if sorted_result:
-    cheapest_price = sorted_result[0][0]
+  if sorted_result: cheapest_price = sorted_result[0][0]
   result = []
   i = 0
   #TODO: use a structured object (Class or dict) instead of using indexes for each field in the table
   for r in sorted_result:
-    #Calculate the current record relative to the last record
-    delta_last = 0
-    pct_to_last = 0
-    pct_to_cheapest = 0
-    #TODO:handle cases where cheapest is 0
-    if i >= 1:
-      delta_last = sorted_result[i][0]-sorted_result[i-1][0]
-      if sorted_result[i-1][0] > 0:
-        pct_to_last = ((sorted_result[i][0]-sorted_result[i-1][0])/sorted_result[i-1][0])*100
-    if cheapest_price > 0:
-      pct_to_cheapest = ((r[0]-cheapest_price)/cheapest_price)*100
-    
-    result.append((r[0], r[1],pct_to_cheapest, pct_to_last,(r[0]-cheapest_price),delta_last))
+    if sorted_result[i][0]>0:
+      #Calculate the current record relative to the last record
+      delta_last = 0
+      pct_to_last = 0
+      pct_to_cheapest = 0
+      if i >= 1:
+        delta_last = sorted_result[i][0]-sorted_result[i-1][0]
+        if sorted_result[i-1][0] > 0:
+          pct_to_last = ((sorted_result[i][0]-sorted_result[i-1][0])/sorted_result[i-1][0])*100
+      if cheapest_price > 0:
+        pct_to_cheapest = ((r[0]-cheapest_price)/cheapest_price)*100
+
+      result.append((r[0], r[1],pct_to_cheapest, pct_to_last,(r[0]-cheapest_price),delta_last))
 
     i = i+1
 
@@ -129,7 +144,7 @@ def compare(**kwargs):
     rowCriteriaValues = ""
     if sortCriteria in [consts.SORT_CRITERIA_REGION, consts.SORT_CRITERIA_TO_REGION]:
       rowCriteriaValues = r[1]+"\t"+consts.REGION_MAP[r[1]]+"\t"
-    if sortCriteria in [consts.SORT_CRITERIA_OS, consts.SORT_CRITERIA_LAMBDA_MEMORY, consts.SORT_CRITERIA_S3_STORAGE_CLASS]:
+    else:
       rowCriteriaValues = str(r[1])+"\t"
     print(rowCriteriaValues+str(r[0])+"\t"+str(r[2])+"\t"+str(r[3])+"\t"+str(r[4])+"\t"+str(r[5]))
 

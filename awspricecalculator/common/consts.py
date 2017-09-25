@@ -151,6 +151,8 @@ INFINITY = 'Inf'
 
 SORT_CRITERIA_REGION = 'region'
 SORT_CRITERIA_OS = 'os'
+SORT_CRITERIA_DB_INSTANCE_CLASS = 'db-instance-class'
+SORT_CRITERIA_DB_ENGINE = 'engine'
 SORT_CRITERIA_S3_STORAGE_CLASS = 'storage-class'
 SORT_CRITERIA_TO_REGION = 'to-region'
 SORT_CRITERIA_LAMBDA_MEMORY = 'memory'
@@ -257,9 +259,14 @@ EBS_VOLUME_TYPES_MAP = {
 
 #RDS
 
-SUPPORTED_RDS_INSTANCE_CLASSES =('db.t2.micro','db.t2.small','db.t2.medium','db.t2.large', 'db.r3.large', 'db.r3.xlarge',
-                               'db.r3.2xlarge', 'db.r3.4xlarge','db.r3.8xlarge','db.m4.large','db.m4.xlarge','db.m4.2xlarge',
-                               'db.m4.4xlarge','db.m4.10xlarge','db.m3.medium','db.m3.large', 'db.m3.xlarge', 'db.m3.2xlarge')
+SUPPORTED_RDS_INSTANCE_CLASSES =(
+                "db.t1.micro", "db.m1.small", "db.m1.medium", "db.m1.large", "db.m1.xlarge",
+                "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge",
+                "db.m3.medium", "db.m3.large", "db.m3.xlarge", "db.m3.2xlarge",
+                "db.m4.large", "db.m4.xlarge", "db.m4.2xlarge", "db.m4.4xlarge", "db.m4.10xlarge",
+                "db.r3.large", "db.r3.xlarge", "db.r3.2xlarge", "db.r3.4xlarge", "db.r3.8xlarge",
+                "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large"
+                )
 
 
 SCRIPT_RDS_STORAGE_TYPE_STANDARD = 'standard'
@@ -295,7 +302,7 @@ RDS_DB_ENGINE_MARIADB = 'MariaDB'
 RDS_DB_ENGINE_ORACLE = 'Oracle'
 RDS_DB_ENGINE_SQL_SERVER = 'SQL Server'
 RDS_DB_ENGINE_POSTGRESQL = 'PostgreSQL'
-RDS_DB_ENGINE_AURORA = 'Amazon Aurora'
+RDS_DB_ENGINE_AURORA = 'Aurora MySQL'
 
 RDS_DB_EDITION_ENTERPRISE = 'Enterprise'
 RDS_DB_EDITION_STANDARD = 'Standard'
@@ -318,6 +325,13 @@ SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB = 'sqlserver-web'
 SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL = 'postgres'
 SCRIPT_RDS_DATABASE_ENGINE_AURORA = 'aurora'
 
+RDS_SUPPORTED_DB_ENGINES = (SCRIPT_RDS_DATABASE_ENGINE_MYSQL,SCRIPT_RDS_DATABASE_ENGINE_MARIADB,
+                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD, SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE,
+                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO,SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE,
+                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD,
+                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB,
+                            SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, SCRIPT_RDS_DATABASE_ENGINE_AURORA
+                            )
 
 SCRIPT_RDS_LICENSE_MODEL_INCLUDED = 'license-included'
 SCRIPT_RDS_LICENSE_MODEL_BYOL = 'bring-your-own-license'
@@ -326,18 +340,6 @@ RDS_SUPPORTED_LICENSE_MODELS = (SCRIPT_RDS_LICENSE_MODEL_INCLUDED, SCRIPT_RDS_LI
 RDS_LICENSE_MODEL_MAP = {SCRIPT_RDS_LICENSE_MODEL_INCLUDED:'License included',
                          SCRIPT_RDS_LICENSE_MODEL_BYOL:'Bring your own license',
                          SCRIPT_RDS_LICENSE_MODEL_PUBLIC:'No license required'}
-
-
-
-
-
-RDS_SUPPORTED_DB_ENGINES = (SCRIPT_RDS_DATABASE_ENGINE_MYSQL,SCRIPT_RDS_DATABASE_ENGINE_MARIADB,
-                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD, SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE,
-                            SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO,SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE,
-                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD,
-                            SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB,
-                            SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, SCRIPT_RDS_DATABASE_ENGINE_AURORA
-                            )
 
 RDS_ENGINE_MAP = {SCRIPT_RDS_DATABASE_ENGINE_MYSQL:{'engine':RDS_DB_ENGINE_MYSQL,'edition':''},
                   SCRIPT_RDS_DATABASE_ENGINE_MARIADB:{'engine':RDS_DB_ENGINE_MARIADB ,'edition':''},

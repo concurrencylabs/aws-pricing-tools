@@ -36,13 +36,21 @@ def calculate(pdim):
   #DB Instance
   if pdim.instanceHours:
     instanceDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATABASE_INSTANCE)]
+
+    #'License Model' is not consistent for 'No license required' - sometimes it comes empty
+    if pdim.licenseModel == consts.SCRIPT_RDS_LICENSE_MODEL_PUBLIC:
+      licenseModelquery = ((priceQuery['License Model'] == skuLicenseModel) | (priceQuery['License Model'] == ''))
+    else:
+      licenseModelquery = (priceQuery['License Model'] == skuLicenseModel)
+
     query = ((priceQuery['Product Family'] == consts.PRODUCT_FAMILY_DATABASE_INSTANCE) &
             (priceQuery['Instance Type'] == pdim.dbInstanceClass) &
             (priceQuery['Database Engine'] == skuEngine) &
             (priceQuery['Database Edition'] == skuEngineEdition) &
-            (priceQuery['License Model'] == skuLicenseModel) &
+            licenseModelquery &
             (priceQuery['Deployment Option'] == pdim.deploymentOption))
 
+    #print("RDS tinydb query: {}".format(query))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, instanceDb, query, pdim.instanceHours, pricing_records, cost)
 
   #TODO: add support for Reserved
@@ -115,4 +123,3 @@ def calculate(pdim):
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
   return pricing_result.__dict__
-

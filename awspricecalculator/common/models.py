@@ -160,55 +160,35 @@ class Ec2PriceDimension():
 
 class RdsPriceDimension():
     def __init__(self, **kargs):
-      self.region = ''
-      if 'region' in kargs: self.region = kargs['region']
+      self.region = kargs.get('region','')
 
       self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
 
-      self.dbInstanceClass = ''
-      if 'dbInstanceClass' in kargs: self.dbInstanceClass = kargs['dbInstanceClass']
+      self.dbInstanceClass = kargs.get('dbInstanceClass','')
+      self.engine = kargs.get('engine')
 
-      self.engine = ''
-      if 'engine' in kargs: self.engine = kargs['engine']
-
-      self.licenseModel = ''
-      if 'licenseModel' in kargs: self.licenseModel = kargs['licenseModel']
+      self.licenseModel = kargs.get('licenseModel')
       if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA):
           self.licenseModel = consts.SCRIPT_RDS_LICENSE_MODEL_PUBLIC
 
-      self.instanceHours = 0
-      if 'instanceHours' in kargs: self.instanceHours = int(kargs['instanceHours'])
+      self.instanceHours = int(kargs.get('instanceHours',0))
 
-      self.multiAz = False
-      if 'multiAz' in kargs: self.multiAz = kargs['multiAz']
-
+      #TODO: add support for "Deployment Option" = "Multi-AZ (SQL Server Mirror)", for SQL server engine
+      self.multiAz = kargs.get('multiAz',False)
       if self.multiAz:
         self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ
       else:
         self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_SINGLE_AZ
 
-      self.dataTransferOutInternetGb = 0
-      if 'dataTransferOutInternetGb' in kargs: self.dataTransferOutInternetGb = kargs['dataTransferOutInternetGb']
-      self.dataTransferOutIntraRegionGb = 0
-      if 'dataTransferOutIntraRegionGb' in kargs: self.dataTransferOutIntraRegionGb = kargs['dataTransferOutIntraRegionGb']
-      self.dataTransferOutInterRegionGb = 0
-      if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
-      self.toRegion = ''
-      if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
-
-      self.storageGbMonth = 0
-      if 'storageGbMonth' in kargs: self.storageGbMonth = kargs['storageGbMonth']
-
-      self.storageType = ''
-      if 'storageType' in kargs: self.storageType = kargs['storageType']
-
+      self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
+      self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
+      self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+      self.toRegion = kargs.get('toRegion','')
+      self.storageGbMonth = kargs.get('storageGbMonth',0)
+      self.storageType = kargs.get('storageType','')
       self.volumeType = self.calculate_volume_type()
-
-      self.iops = 0
-      if 'iops' in kargs: self.iops= kargs['iops']
-
-      self.ioRate = 0
-      if 'ioRate' in kargs: self.ioRate= kargs['ioRate']
+      self.iops= kargs.get('iops',0)
+      self.ioRate= kargs.get('ioRate',0)
 
       """
       backupStorageGbMonth = 0
@@ -225,6 +205,7 @@ class RdsPriceDimension():
 
     def validate(self):
       #TODO: add validations for data transfer
+      #TODO: add validations for different combinations of engine, edition and license
       validation_ok = True
       validation_message = ""
       valid_engine = True
@@ -237,7 +218,7 @@ class RdsPriceDimension():
         validation_message += "\n" + "engine must be one of the following values:"+str(consts.RDS_SUPPORTED_DB_ENGINES)
         valid_engine  = False
       if valid_engine and self.engine not in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA):
-        if self.licenseModel and self.licenseModel not in (consts.RDS_SUPPORTED_LICENSE_MODELS):
+        if self.licenseModel not in (consts.RDS_SUPPORTED_LICENSE_MODELS):
           validation_message += "\n" + "license-model must be one of the following values:"+str(consts.RDS_SUPPORTED_LICENSE_MODELS)
       if self.storageType:
         if self.storageType not in consts.SUPPORTED_RDS_STORAGE_TYPES:
