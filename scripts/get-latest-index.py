@@ -9,6 +9,9 @@ import awspricecalculator.common.phelper as phelper
 __location__ = os.path.dirname(os.path.realpath(__file__))
 dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator", "data")
 
+"""
+This script gets the latest index files from the AWS Price List API.
+"""
 
 def main(argv):
 

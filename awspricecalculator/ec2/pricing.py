@@ -6,7 +6,6 @@ from ..common.models import PricingResult
 
 import tinydb
 
-
 log = logging.getLogger()
 
 
