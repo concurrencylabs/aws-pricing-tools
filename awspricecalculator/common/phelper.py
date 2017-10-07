@@ -142,8 +142,8 @@ def loadDBs(service, indexFiles):
 
 def getIndexMetadata(service):
   result = {}
-  datadir = get_data_directory(service)
-  with open(get_data_directory(service)+"/index_metadata.json") as index_metadata:
+  #datadir = get_data_directory(service)
+  with open(get_data_directory(service)+"index_metadata.json") as index_metadata:
     result = json.load(index_metadata)
 
   return result
