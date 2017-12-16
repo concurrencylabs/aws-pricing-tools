@@ -5,6 +5,7 @@ import datetime
 import logging
 import csv, json
 from models import PricingRecord, PricingResult
+from errors import NoDataFoundError
 
 log = logging.getLogger()
 
@@ -44,8 +45,11 @@ def getBillableBandCsv(row, usageAmount):
     pricePerUnit = 0
     amt = 0
 
-    beginRange = int(row['StartingRange'])
-    endRange = row['EndingRange']
+    if not row['StartingRange']:beginRange = 0
+    else: beginRange = int(row['StartingRange'])
+    if not row['EndingRange']:endRange = consts.INFINITY
+    else: endRange = row['EndingRange']
+
     pricePerUnit = float(row['PricePerUnit'])
     if endRange == consts.INFINITY:
       if beginRange < usageAmount:
@@ -81,33 +85,49 @@ def buildSkuTable(evaluated_sku_desc):
 
 
 
-#Calculates the keys that will be used to partition big index files into smaller pieces
-def get_partition_keys(region):
+"""
+Calculates the keys that will be used to partition big index files into smaller pieces.
+If no term is specified, the function will consider On-Demand and Reserved
+"""
+def get_partition_keys(region, term, **extraArgs):
     result = []
     if region:
       regions = [consts.REGION_MAP[region]]
     else:
       regions = consts.REGION_MAP.values()
-    #terms = consts.TERM_TYPE_MAP.values()
-    #TODO: support partitions for Reserved Instances too
-    terms = [consts.TERM_TYPE_MAP[consts.SCRIPT_TERM_TYPE_ON_DEMAND]]
-    offeringClasses = consts.SUPPORTED_OFFERING_CLASSES
-    purchaseOptions = consts.EC2_PURCHASE_OPTION_MAP.values()
+
+    if term: terms = [consts.TERM_TYPE_MAP[term]]
+    else: terms = consts.TERM_TYPE_MAP.values()
+
     productFamilies = consts.SUPPORTED_PRODUCT_FAMILIES
+
+    #EC2 Reserved
+    offeringClasses = extraArgs.get('offeringClasses',consts.EC2_OFFERING_CLASS_MAP.values())
+    tenancies = extraArgs.get('tenancies',consts.EC2_TENANCY_MAP.values())
+    purchaseOptions = extraArgs.get('purchaseOptions',consts.EC2_PURCHASE_OPTION_MAP.values())
 
     indexDict = {}
     for r in regions:
         for t in terms:
             for pf in productFamilies:
-                result.append(create_file_key(r,t,pf))
+                #Reserved EC2 instances have more dimensions for index creation
+                if t == consts.TERM_TYPE_RESERVED:
+                    for oc in offeringClasses:
+                        for ten in tenancies:
+                            for po in purchaseOptions:
+                              result.append(create_file_key((r,t,pf,oc,ten, po)))
+                else:
+                    result.append(create_file_key((r,t,pf)))
 
-    log.debug("get_partition_keys - result: [{}]".format(len(result)))
+    #print ("get_partition_keys - number of partition keys: [{}]".format(len(result)))
     return result
 
 
 #Creates a file key that identifies a data partition
-def create_file_key(region, termType, productFamily):
-    return (region + termType + productFamily).replace(' ','')
+def create_file_key(indexDimensions):
+    result = ""
+    for d in indexDimensions: result += d
+    return result.replace(' ','')
 
 
 
@@ -151,6 +171,8 @@ def getIndexMetadata(service):
 
 def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
   resultSet = db.search(query)
+  if not resultSet: raise NoDataFoundError("Could not find data for service:[{}] - query:[{}]".format(service, query))
+  #print("resultSet:[{}]".format(json.dumps(resultSet,indent=4)))
   for r in resultSet:
     billableUsage, pricePerUnit, amt = getBillableBandCsv(r, usageAmount)
     cost = cost + amt

@@ -6,6 +6,8 @@ DEFAULT_CURRENCY = "USD"
 FORECAST_PERIOD_MONTHLY = "monthly"
 FORECAST_PERIOD_YEARLY = "yearly"
 
+HOURS_IN_MONTH = 720
+
 SERVICE_CODE_AWS_DATA_TRANSFER = 'AWSDataTransfer'
 
 REGION_MAP = {'us-east-1':'US East (N. Virginia)',
@@ -21,7 +23,8 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ap-southeast-1':'Asia Pacific (Singapore)',
               'ap-southeast-2':'Asia Pacific (Sydney)',
               'sa-east-1':'South America (Sao Paulo)',
-              'ap-south-1':'Asia Pacific (Mumbai)'
+              'ap-south-1':'Asia Pacific (Mumbai)',
+              'cn-northwest-1':'China (Ningxia)'
               }
 
 
@@ -39,6 +42,7 @@ REGION_PREFIX_MAP = {'us-east-1':'',
               'ap-southeast-2':'APS2-',
               'sa-east-1':'SAE1-',
               'ap-south-1':'APS3-',
+              'cn-northwest-1':'',
               'US East (N. Virginia)':'',
               'US East (Ohio)':'USE2-',
               'US West (N. California)':'USW1-',
@@ -73,7 +77,8 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'ap-southeast-1':'Singapore',
               'ap-southeast-2':'Sydney',
               'sa-east-1':'Sao Paulo',
-              'ap-south-1':'Mumbai'
+              'ap-south-1':'Mumbai',
+              'cn-northwest-1':'Ningxia'
               }
 
 
@@ -88,13 +93,15 @@ SERVICE_DYNAMODB= 'dynamodb'
 SERVICE_KINESIS = 'kinesis'
 SERVICE_ALL = 'all'
 
+NOT_APPLICABLE = 'NA'
 
 
 SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERVICE_DYNAMODB, SERVICE_KINESIS)
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
-                     'sa-east-1','ap-south-1')
+                     'sa-east-1','ap-south-1','cn-northwest-1'
+                     )
 
 SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small',
                             'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge',
@@ -116,6 +123,9 @@ SERVICE_INDEX_MAP = {SERVICE_S3:'AmazonS3', SERVICE_EC2:'AmazonEC2', SERVICE_RDS
 
 SCRIPT_TERM_TYPE_ON_DEMAND = 'on-demand'
 SCRIPT_TERM_TYPE_RESERVED = 'reserved'
+
+TERM_TYPE_RESERVED = 'Reserved'
+TERM_TYPE_ON_DEMAND = 'OnDemand'
 
 SUPPORTED_TERM_TYPES = (SCRIPT_TERM_TYPE_ON_DEMAND, SCRIPT_TERM_TYPE_RESERVED)
 
@@ -156,7 +166,7 @@ SORT_CRITERIA_DB_ENGINE = 'engine'
 SORT_CRITERIA_S3_STORAGE_CLASS = 'storage-class'
 SORT_CRITERIA_TO_REGION = 'to-region'
 SORT_CRITERIA_LAMBDA_MEMORY = 'memory'
-
+SORT_CRITERIA_TERM_TYPE = 'term-type'
 
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
 #EC2
@@ -167,8 +177,14 @@ EC2_OPERATING_SYSTEM_SUSE = 'Suse'
 #EC2_OPERATING_SYSTEM_SQL_WEB = 'SQL Web'
 EC2_OPERATING_SYSTEM_RHEL = 'RHEL'
 
+SCRIPT_EC2_TENANCY_SHARED = 'shared'
+SCRIPT_EC2_TENANCY_DEDICATED = 'dedicated'
+
 EC2_TENANCY_SHARED = 'Shared'
 EC2_TENANCY_DEDICATED = 'Dedicated'
+
+EC2_TENANCY_MAP = {SCRIPT_EC2_TENANCY_SHARED:EC2_TENANCY_SHARED, SCRIPT_EC2_TENANCY_DEDICATED:EC2_TENANCY_DEDICATED}
+
 
 STORAGE_MEDIA_SSD = "SSD-backed"
 STORAGE_MEDIA_HDD = "HDD-backed"
@@ -204,18 +220,40 @@ SCRIPT_EBS_VOLUME_TYPE_ST1 = 'st1'
 
 
 #Reserved Instances
+SCRIPT_EC2_OFFERING_CLASS_STANDARD = 'standard'
+SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE = 'convertible'
+
 EC2_OFFERING_CLASS_STANDARD = 'standard'
 EC2_OFFERING_CLASS_CONVERTIBLE = 'convertible'
 
-SUPPORTED_OFFERING_CLASSES = (EC2_OFFERING_CLASS_STANDARD, EC2_OFFERING_CLASS_CONVERTIBLE)
+SUPPORTED_EC2_OFFERING_CLASSES = (SCRIPT_EC2_OFFERING_CLASS_STANDARD, SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE)
+
+EC2_OFFERING_CLASS_MAP = {SCRIPT_EC2_OFFERING_CLASS_STANDARD:EC2_OFFERING_CLASS_STANDARD,
+                          SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE: EC2_OFFERING_CLASS_CONVERTIBLE}
 
 
-EC2_PURCHASE_OPTION_PARTIAL_UPFRONT = 'partial-upfront'
-EC2_PURCHASE_OPTION_ALL_UPFRONT = 'all-upfront'
-EC2_PURCHASE_OPTION_NO_UPFRONT = 'no-upfront'
 
-EC2_PURCHASE_OPTION_MAP = {EC2_PURCHASE_OPTION_PARTIAL_UPFRONT:'Partial Upfront',
-                           EC2_PURCHASE_OPTION_ALL_UPFRONT: 'All Upfront', EC2_PURCHASE_OPTION_NO_UPFRONT: 'No Upfront'
+SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT = 'partial-upfront'
+SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT = 'all-upfront'
+SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT = 'no-upfront'
+
+EC2_PURCHASE_OPTION_PARTIAL_UPFRONT = 'Partial Upfront'
+EC2_PURCHASE_OPTION_ALL_UPFRONT = 'All Upfront'
+EC2_PURCHASE_OPTION_NO_UPFRONT = 'No Upfront'
+
+SCRIPT_EC2_RESERVED_YEARS_1 = '1'
+SCRIPT_EC2_RESERVED_YEARS_3 = '3'
+
+EC2_SUPPORTED_RESERVED_YEARS = (SCRIPT_EC2_RESERVED_YEARS_1, SCRIPT_EC2_RESERVED_YEARS_3)
+
+EC2_RESERVED_YEAR_MAP = {SCRIPT_EC2_RESERVED_YEARS_1:'1yr', SCRIPT_EC2_RESERVED_YEARS_3:'3yr'}
+
+EC2_SUPPORTED_PURCHASE_OPTIONS = (SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT)
+
+
+
+EC2_PURCHASE_OPTION_MAP = {SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT:EC2_PURCHASE_OPTION_PARTIAL_UPFRONT,
+                           SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT: EC2_PURCHASE_OPTION_ALL_UPFRONT, SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT: EC2_PURCHASE_OPTION_NO_UPFRONT
                            }
 
 SUPPORTED_EC2_OPERATING_SYSTEMS = (SCRIPT_OPERATING_SYSTEM_LINUX,
@@ -259,14 +297,13 @@ EBS_VOLUME_TYPES_MAP = {
 
 #RDS
 
-SUPPORTED_RDS_INSTANCE_CLASSES =(
-                "db.t1.micro", "db.m1.small", "db.m1.medium", "db.m1.large", "db.m1.xlarge",
-                "db.m2.xlarge", "db.m2.2xlarge", "db.m2.4xlarge",
-                "db.m3.medium", "db.m3.large", "db.m3.xlarge", "db.m3.2xlarge",
-                "db.m4.large", "db.m4.xlarge", "db.m4.2xlarge", "db.m4.4xlarge", "db.m4.10xlarge",
-                "db.r3.large", "db.r3.xlarge", "db.r3.2xlarge", "db.r3.4xlarge", "db.r3.8xlarge",
-                "db.t2.micro", "db.t2.small", "db.t2.medium", "db.t2.large"
-                )
+SUPPORTED_RDS_INSTANCE_CLASSES = ('db.t1.micro', 'db.m1.small', 'db.m1.medium', 'db.m1.large', 'db.m1.xlarge',
+                'db.m2.xlarge', 'db.m2.2xlarge', 'db.m2.4xlarge',
+                'db.m3.medium', 'db.m3.large', 'db.m3.xlarge', 'db.m3.2xlarge',
+                'db.m4.large', 'db.m4.xlarge', 'db.m4.2xlarge', 'db.m4.4xlarge', 'db.m4.10xlarge', 'db.m4.16xlarge',
+                'db.r3.large', 'db.r3.xlarge', 'db.r3.2xlarge', 'db.r3.4xlarge', 'db.r3.8xlarge',
+                'db.r4.large', 'db.r4.xlarge', 'db.r4.2xlarge', 'db.r4.4xlarge', 'db.r4.8xlarge', 'db.r4.16xlarge',
+                'db.t2.micro', 'db.t2.small', 'db.t2.2xlarge', 'db.t2.large', 'db.t2.xlarge', 'db.t2.medium')
 
 
 SCRIPT_RDS_STORAGE_TYPE_STANDARD = 'standard'
@@ -296,13 +333,15 @@ SUPPORTED_RDS_STORAGE_TYPES = (SCRIPT_RDS_STORAGE_TYPE_STANDARD, SCRIPT_RDS_STOR
 
 RDS_DEPLOYMENT_OPTION_SINGLE_AZ = 'Single-AZ'
 RDS_DEPLOYMENT_OPTION_MULTI_AZ = 'Multi-AZ'
+RDS_DEPLOYMENT_OPTION_MULTI_AZ_MIRROR = 'Multi-AZ (SQL Server Mirror)'
 
 RDS_DB_ENGINE_MYSQL = 'MySQL'
 RDS_DB_ENGINE_MARIADB = 'MariaDB'
 RDS_DB_ENGINE_ORACLE = 'Oracle'
 RDS_DB_ENGINE_SQL_SERVER = 'SQL Server'
 RDS_DB_ENGINE_POSTGRESQL = 'PostgreSQL'
-RDS_DB_ENGINE_AURORA = 'Aurora MySQL'
+RDS_DB_ENGINE_AURORA_MYSQL = 'Aurora MySQL'
+RDS_DB_ENGINE_AURORA_POSTGRESQL = 'Aurora PostgreSQL'
 
 RDS_DB_EDITION_ENTERPRISE = 'Enterprise'
 RDS_DB_EDITION_STANDARD = 'Standard'
@@ -323,14 +362,16 @@ SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD = 'sqlserver-se'
 SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS = 'sqlserver-ex'
 SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB = 'sqlserver-web'
 SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL = 'postgres'
-SCRIPT_RDS_DATABASE_ENGINE_AURORA = 'aurora'
+SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL = 'aurora'
+SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL = 'aurora-postgresql'
 
 RDS_SUPPORTED_DB_ENGINES = (SCRIPT_RDS_DATABASE_ENGINE_MYSQL,SCRIPT_RDS_DATABASE_ENGINE_MARIADB,
                             SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD, SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE,
                             SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO,SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE,
                             SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD,
                             SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS, SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB,
-                            SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, SCRIPT_RDS_DATABASE_ENGINE_AURORA
+                            SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL,
+                            SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL
                             )
 
 SCRIPT_RDS_LICENSE_MODEL_INCLUDED = 'license-included'
@@ -352,7 +393,8 @@ RDS_ENGINE_MAP = {SCRIPT_RDS_DATABASE_ENGINE_MYSQL:{'engine':RDS_DB_ENGINE_MYSQL
                   SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_EXPRESS},
                   SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB:{'engine':RDS_DB_ENGINE_SQL_SERVER ,'edition':RDS_DB_EDITION_WEB},
                   SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL:{'engine':RDS_DB_ENGINE_POSTGRESQL ,'edition':''},
-                  SCRIPT_RDS_DATABASE_ENGINE_AURORA:{'engine':RDS_DB_ENGINE_AURORA ,'edition':''}
+                  SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL:{'engine':RDS_DB_ENGINE_AURORA_MYSQL ,'edition':''},
+                  SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL:{'engine':RDS_DB_ENGINE_AURORA_POSTGRESQL ,'edition':''}
                   }
 
 
@@ -396,4 +438,6 @@ S3_STORAGE_CLASS_MAP = {SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS:S3_STORAGE_CLASS_
 
 #LAMBDA
 
-LAMBDA_MEM_SIZES = [128, 192, 256, 320, 384, 448, 512, 576, 640, 704, 768, 832, 896, 960, 1024, 1088, 1152, 1216, 1280, 1344, 1408, 1472, 1536]
+LAMBDA_MEM_SIZES = [64,128,192,256,320,384,448,512,576,640,704,768,832,896,960,1024,1088,1152,1216,1280,1344,1408,
+                    1472,1536,1600,1664,1728,1792,1856,1920,1984,2048,2112,2176,2240,2304,2368,2432,2496,2560,2624,2688,
+                    2752,2816,2880,2944,3008]

@@ -15,7 +15,8 @@ def calculate(pdim):
   ts = phelper.Timestamp()
   ts.start('totalCalculationAwsLambda')
 
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_LAMBDA, phelper.get_partition_keys(pdim.region))
+  #Load On-Demand DB
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_LAMBDA, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
 
   cost = 0
   pricing_records = []
@@ -25,7 +26,7 @@ def calculate(pdim):
 
   #TODO: add support to include/ignore free-tier (include a flag)
 
-  serverlessDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SERVERLESS)]
+  serverlessDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_SERVERLESS])]
 
   #Requests
   if pdim.requestCount:
@@ -39,7 +40,7 @@ def calculate(pdim):
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, serverlessDb, query, usageUnits, pricing_records, cost)
 
   #Data Transfer
-  dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+  dataTransferDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER])]
 
   #To internet
   if pdim.dataTransferOutInternetGb:

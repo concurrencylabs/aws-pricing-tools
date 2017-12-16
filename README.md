@@ -21,7 +21,7 @@ https://www.concurrencylabs.com/blog/calculate-near-realtime-pricing-serverless-
 
 The code is structured in the following way:
 
-**awspricecalculator**. The modules in this package search data directly with the AWS Price List API index files.
+**awspricecalculator**. The modules in this package search data within the AWS Price List API index files.
 They take price dimension parameters as inputs and return results in JSON format. This package
 is called by Lambda functions or other Python scripts.
 

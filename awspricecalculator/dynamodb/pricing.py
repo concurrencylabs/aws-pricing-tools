@@ -15,7 +15,8 @@ def calculate(pdim):
   ts = phelper.Timestamp()
   ts.start('totalCalculationDynamoDB')
 
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_DYNAMODB, phelper.get_partition_keys(pdim.region))
+  #Load On-Demand DBs
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_DYNAMODB, phelper.get_partition_keys(pdim.region,consts.SCRIPT_TERM_TYPE_ON_DEMAND))
 
   cost = 0
   pricing_records = []
@@ -25,7 +26,7 @@ def calculate(pdim):
 
   #TODO:add support for free-tier flag (include or exclude from calculation)
 
-  iopsDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DB_PIOPS)]
+  iopsDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DB_PIOPS])]
 
   #Read Capacity Units
   query = ((priceQuery['Group'] == 'DDB-ReadUnits'))

@@ -15,7 +15,7 @@ def calculate(pdim):
   ts = phelper.Timestamp()
   ts.start('totalCalculationKinesis')
 
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_KINESIS, phelper.get_partition_keys(pdim.region))
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_KINESIS, phelper.get_partition_keys(pdim.region,consts.SCRIPT_TERM_TYPE_ON_DEMAND))
 
   cost = 0
   pricing_records = []
@@ -23,7 +23,7 @@ def calculate(pdim):
   awsPriceListApiVersion = indexMetadata['Version']
   priceQuery = tinydb.Query()
 
-  kinesisDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_KINESIS_STREAMS)]
+  kinesisDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_KINESIS_STREAMS])]
 
   #Shard Hours
   query = ((priceQuery['Group'] == 'Provisioned shard hour'))

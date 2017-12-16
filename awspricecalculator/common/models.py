@@ -1,3 +1,4 @@
+import math
 import consts
 from errors import ValidationError
 
@@ -59,22 +60,10 @@ class Ec2PriceDimension():
     def __init__(self, **kargs):
 
       self.region = kargs['region']
-      self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
-      if 'termType' in kargs: self.termType = kargs['termType']
-
-      self.purchaseOption = ''
-      if 'purchaseOption' in kargs: self.purchaseOption = kargs['purchaseOption']
-
-      self.offeringClass = ''
-      if 'offeringClass' in kargs: self.offeringClass = kargs['offeringClass']
-
-      self.instanceType = ''
-      if 'instanceType' in kargs: self.instanceType = kargs['instanceType']
-      self.instanceHours = 0
-      if 'instanceHours' in kargs: self.instanceHours = kargs['instanceHours']
-      self.operatingSystem = consts.SCRIPT_OPERATING_SYSTEM_LINUX
-      if 'operatingSystem' in kargs:
-          if kargs['operatingSystem']: self.operatingSystem = kargs['operatingSystem']
+      self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
+      self.instanceType = kargs.get('instanceType','')
+      self.instanceHours = kargs.get('instanceHours',0)
+      self.operatingSystem = kargs.get('operatingSystem',consts.SCRIPT_OPERATING_SYSTEM_LINUX)
 
       #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
       self.preInstalledSoftware = 'NA'
@@ -86,37 +75,32 @@ class Ec2PriceDimension():
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:
           self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_BYOL
 
+      #Reserved Instances
+      self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
+      self.instanceCount = kargs.get('instanceCount',0)
+      self.offeringType = kargs.get('offeringType','')
+      self.years = kargs.get('years',0)
 
 
 
-      self.dataTransferOutInternetGb = 0
-      if 'dataTransferOutInternetGb' in kargs: self.dataTransferOutInternetGb = kargs['dataTransferOutInternetGb']
-      self.dataTransferOutIntraRegionGb = 0
-      if 'dataTransferOutIntraRegionGb' in kargs: self.dataTransferOutIntraRegionGb = kargs['dataTransferOutIntraRegionGb']
-      self.dataTransferOutInterRegionGb = 0
-      if 'dataTransferOutInterRegionGb' in kargs: self.dataTransferOutInterRegionGb = kargs['dataTransferOutInterRegionGb']
-      self.toRegion = ''
-      if 'toRegion' in kargs: self.toRegion = kargs['toRegion']
-      self.pIops = 0
-      if 'pIops' in kargs: self.pIops = kargs['pIops']
+      self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
+      self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
+      self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+      self.toRegion = kargs.get('toRegion','')
+      self.pIops = kargs.get('pIops',0)
       self.storageMedia = ''
-      self.ebsVolumeType = ''
-      if 'ebsVolumeType' in kargs: self.ebsVolumeType = kargs['ebsVolumeType']
+      self.ebsVolumeType = kargs.get('ebsVolumeType','')
       if self.ebsVolumeType in consts.EBS_VOLUME_TYPES_MAP: self.storageMedia = consts.EBS_VOLUME_TYPES_MAP[self.ebsVolumeType]['storageMedia']
       self.volumeType = ''
       if self.ebsVolumeType in consts.EBS_VOLUME_TYPES_MAP:  self.volumeType = consts.EBS_VOLUME_TYPES_MAP[self.ebsVolumeType]['volumeType']
       if not self.volumeType: self.volumeType = consts.SCRIPT_EBS_VOLUME_TYPE_GP2
-      self.ebsStorageGbMonth = 0
-      if 'ebsStorageGbMonth' in kargs: self.ebsStorageGbMonth = kargs['ebsStorageGbMonth']
-      self.ebsSnapshotGbMonth = 0
-      if 'ebsSnapshotGbMonth' in kargs: self.ebsSnapshotGbMonth = kargs['ebsSnapshotGbMonth']
-      self.elbHours = 0
-      if 'elbHours' in kargs: self.elbHours = kargs['elbHours']
-      self.elbDataProcessedGb = 0
-      if 'elbDataProcessedGb' in kargs: self.elbDataProcessedGb = kargs['elbDataProcessedGb']
+      self.ebsStorageGbMonth = kargs.get('ebsStorageGbMonth',0)
+      self.ebsSnapshotGbMonth = kargs.get('ebsSnapshotGbMonth',0)
+      self.elbHours = kargs.get('elbHours',0)
+      self.elbDataProcessedGb = kargs.get('elbDataProcessedGb',0)
 
       #TODO: Add support for shared and dedicated tenancies
-      self.tenancy = consts.EC2_TENANCY_SHARED
+      self.tenancy = consts.SCRIPT_EC2_TENANCY_SHARED
 
       self.validate()
 
@@ -144,8 +128,20 @@ class Ec2PriceDimension():
       if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
           if not self.offeringClass:
               validation_message += "offering-class must be specified for Reserved instances\n"
-          if not self.purchaseOption:
-              validation_message += "purchase-option must be specified for Reserved instances\n"
+          if self.offeringClass and self.offeringClass not in (consts.SUPPORTED_EC2_OFFERING_CLASSES):
+              validation_message += "offering-class is "+self.offeringClass+", must be one of the following values:"+str(consts.SUPPORTED_EC2_OFFERING_CLASSES)
+          if not self.offeringType:
+              validation_message += "offering-type must be specified\n"
+          if self.offeringType and self.offeringType not in (consts.EC2_SUPPORTED_PURCHASE_OPTIONS):
+              validation_message += "offering-type is "+self.offeringType+", must be one of the following values:"+str(consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
+          if self.offeringType == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT and self.instanceHours:
+              validation_message += "instance-hours cannot be set if term-type=reserved and offering-type=all-upfront\n"
+          if self.offeringType == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT and not self.instanceCount:
+              validation_message += "instance-count is mandatory if term-type=reserved and offering-type=all-upfront\n"
+          if not self.years:
+              validation_message += "years cannot be empty for Reserved instances"
+
+
 
       #TODO: add validation for max number of IOPS
       #TODO: add validation for negative numbers
@@ -168,12 +164,12 @@ class RdsPriceDimension():
       self.engine = kargs.get('engine')
 
       self.licenseModel = kargs.get('licenseModel')
-      if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA):
+      if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL,
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL):
           self.licenseModel = consts.SCRIPT_RDS_LICENSE_MODEL_PUBLIC
 
       self.instanceHours = int(kargs.get('instanceHours',0))
 
-      #TODO: add support for "Deployment Option" = "Multi-AZ (SQL Server Mirror)", for SQL server engine
       self.multiAz = kargs.get('multiAz',False)
       if self.multiAz:
         self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ
@@ -184,18 +180,20 @@ class RdsPriceDimension():
       self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
       self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
       self.toRegion = kargs.get('toRegion','')
-      self.storageGbMonth = kargs.get('storageGbMonth',0)
+      self.storageGbMonth = int(kargs.get('storageGbMonth',0))
       self.storageType = kargs.get('storageType','')
-      self.volumeType = self.calculate_volume_type()
-      self.iops= kargs.get('iops',0)
-      self.ioRate= kargs.get('ioRate',0)
 
-      """
-      backupStorageGbMonth = 0
-      if 'backupStorageGbMonth' in kwargs: backupStorageGbMonth = kwargs['backupStorageGbMonth']
-      """
+      self.iops= kargs.get('iops',0)
+      self.ioRequests= int(kargs.get('ioRequests',0))
+
+      self.backupStorageGbMonth = int(kargs.get('backupStorageGbMonth',0))
 
       self.validate()
+
+      if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL):
+          self.storageType = consts.SCRIPT_RDS_STORAGE_TYPE_AURORA
+      self.volumeType = self.calculate_volume_type()
+
 
 
     def calculate_volume_type(self):
@@ -217,14 +215,21 @@ class RdsPriceDimension():
       if self.engine and self.engine not in consts.RDS_SUPPORTED_DB_ENGINES:
         validation_message += "\n" + "engine must be one of the following values:"+str(consts.RDS_SUPPORTED_DB_ENGINES)
         valid_engine  = False
-      if valid_engine and self.engine not in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA):
+      if valid_engine and self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL,
+                                              consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL):
         if self.licenseModel not in (consts.RDS_SUPPORTED_LICENSE_MODELS):
-          validation_message += "\n" + "license-model must be one of the following values:"+str(consts.RDS_SUPPORTED_LICENSE_MODELS)
+          validation_message += "\n" + "you have specified license model [{}] - license-model must be one of the following values:{}".format(self.licenseModel, consts.RDS_SUPPORTED_LICENSE_MODELS)
+      if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL):
+          if self.storageType in (consts.SCRIPT_RDS_STORAGE_TYPE_STANDARD, consts.SCRIPT_RDS_STORAGE_TYPE_GP2, consts.SCRIPT_RDS_STORAGE_TYPE_IO1):
+              validation_message += "\nyou have specified {} storage type, which is invalid for DB engine {}".format(self.storageType, self.engine)
       if self.storageType:
         if self.storageType not in consts.SUPPORTED_RDS_STORAGE_TYPES:
           validation_message += "\n" + "storage-type must be one of the following values:"+str(consts.SUPPORTED_RDS_STORAGE_TYPES)
         if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and not self.iops:
           validation_message += "\n" + "you must specify an iops value for storage type io1"
+        if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and self.storageGbMonth < 100 :
+          validation_message += "\nyou have specified {}GB of storage. You must specify at least 100GB of storage for io1".format(self.storageGbMonth)
+
 
       if validation_message:
           print "Error: [{}]".format(validation_message)
@@ -339,8 +344,6 @@ class KinesisPriceDimension():
         return
 
 
-
-
 """
 This object represents the total price calculation.
 It includes an array of PricingRecord objects, which are a breakdown of how the price is calculated
@@ -365,3 +368,135 @@ class PricingRecord():
         self.pricePerUnit = pricePerUnit
         self.usageUnits = int(usgUnits)
         self.rateCode = rateCode
+
+"""
+class PriceComparison():
+    total = 0
+    deltaPrevious = 0
+    deltaCheapest = 0
+    pctToPrevious = 0
+    pctToCheapest = 0
+"""
+
+"""
+This class is a container for price calculations between different term types, such as Demand vs. Reserved
+"""
+class TermPricingAnalysis():
+    def __init__(self, awsPriceListApiVersion, region, service, years):
+        self.version = "v1.0"
+        self.awsPriceListApiVersion = awsPriceListApiVersion
+        self.region = region
+        self.service = service
+        self.currency = consts.DEFAULT_CURRENCY
+        self.years = years
+        self.pricingScenarios = []
+
+    def get_pricing_scenario(self, termType, offerClass, offerType, years):
+        for p in self.pricingScenarios:
+            if p['priceDimensions']['termType']==termType \
+                    and p['priceDimensions'].get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)==offerClass \
+                    and p['priceDimensions']['offeringType']==offerType and p['priceDimensions']['years']==str(years):
+                return p
+            if p['priceDimensions']['termType']==termType and termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND \
+                    and p['priceDimensions']['years']==years:
+                return p
+
+        return False
+
+
+    def get_csv_data(self):
+        #TODO: validate that years is either 1 or 3
+
+        def get_csv_dict():
+            result = {}
+            for k in get_sorted_keys():
+                result[k[1]]=0
+            return result
+            #return {'month':1,'onDemand':0,'reservedAllUpfront1Yr':0,'reservedPartialUpfront1Yr':0,'reservedNoUpfront1Yr':0}
+
+        def get_sorted_keys():
+            return sorted(((1,'month'),(2,'onDemand'),(3,'reservedAllUpfront1Yr'),(4,'reservedPartialUpfront1Yr'),(4,'reservedNoUpfront1Yr')))
+
+        month = 1
+
+        for s in self.pricingScenarios:
+            if s['id'] == "on-demand-1yr": onDemand = s['pricingRecords']
+            if s['id'] == "reserved-no-upfront-1yr": reserved1YrNoUpfront = s['pricingRecords']
+            if s['id'] == "reserved-all-upfront-1yr": reserved1YrAllUpfrontAccum = s['totalCost']
+            for p in s['pricingRecords']:
+                if 'upfront' in p['description'].lower():
+                    if s['id'] == "reserved-partial-upfront-1yr": reserved1YrPartialUpfront = p['amount']
+                    if s['id'] == "reserved-all-upfront-1yr": reserved1YrAllUpfront = p['amount']
+                else: reserved1YrPartialUpfrontApplied = p['amount']
+
+
+        accumDict = get_csv_dict()
+
+        csvdata = ""
+        while month <= int(self.years) * 12:
+            #row = get_csv_dict()
+            accumDict['month']=month
+            if month == 1:
+              accumDict['reservedPartialUpfront1Yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
+
+            accumDict['reservedAllUpfront1Yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, '1'))
+            accumDict['reservedPartialUpfront1Yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
+            accumDict['onDemand'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_ON_DEMAND, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
+            accumDict['reservedNoUpfront1Yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, '1'))
+
+            for k in get_sorted_keys():csvdata += str(accumDict[k[1]])+","
+            csvdata += "\n"
+            month += 1
+
+        csvheaders = ""
+        for k in get_sorted_keys(): csvheaders += k[1]+","
+        csvheaders += "\n"
+        self.csvData = csvheaders + csvdata
+        return
+
+
+    def getUpfrontFee(self, pricingScenarioDict):
+        result = 0
+        for p in pricingScenarioDict['pricingRecords']:
+            if pricingScenarioDict['priceDimensions']['offeringType'] in (consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT) \
+                and 'upfront' in p['description'].lower():
+                result = p['amount']
+                break
+        return result
+
+    def getMonthlyCost(self, pricingScenarioDict):
+        result = 0
+        for p in pricingScenarioDict['pricingRecords']:
+            if pricingScenarioDict['priceDimensions']['offeringType'] != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
+                and 'upfront' not in p['description'].lower():
+                return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
+
+
+
+class TermPricingScenario():
+    def __init__(self, id, priceDimensions, pricingRecords, totalCost, onDemandTotalCost):
+        self.id = id
+        self.priceDimensions = priceDimensions
+        self.pricingRecords = pricingRecords
+        self.totalCost = totalCost
+        self.deltaPrevious = 0 #how more expensive is this item, compared to cheapest option - in $
+        self.deltaCheapest = 0 #how more expensive is this item, compared to cheapest option - in %
+        self.pctToPrevious = 0 #how more expensive is this item, compared to next lower option - in $
+        self.pctToCheapest = 0 #how more expensive is this item, compared to next lower option - in %
+        self.onDemandTotalCost = onDemandTotalCost
+        self.savingsPctvsOnDemand = 0
+        self.totalSavingsvsOnDemand = 0
+        #TODO: implement onDemandMonthsToSavings
+
+    def calculateOnDemandSavings(self):
+        if self.onDemandTotalCost:
+            self.savingsPctvsOnDemand  = math.fabs(round((100 * (self.totalCost - self.onDemandTotalCost) / self.onDemandTotalCost),2))
+        if self.priceDimensions['termType'] == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
+            self.totalSavingsvsOnDemand = 0
+        else:
+            self.totalSavingsvsOnDemand = round((self.onDemandTotalCost - self.totalCost),2)
+
+
+
+
+

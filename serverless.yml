@@ -53,6 +53,7 @@ package:
     - pip-selfcheck.json
     - awspricecalculator/s3
     - awspricecalculator/data/ec2/index.*
+    - awspricecalculator/data/ec2/*Reserved*
     - awspricecalculator/data/rds/index.*
     - awspricecalculator/data/s3/index.*
     - awspricecalculator/data/lambda/index.*

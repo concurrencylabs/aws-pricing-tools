@@ -68,7 +68,7 @@ def main(argv):
           servicedatapath = dataindexpath + "/" + s
           print ("servicedatapath:[{}]".format(servicedatapath))
 
-          if not os.path.isdir(servicedatapath): os.mkdir(servicedatapath)
+          if not os.path.exists(servicedatapath): os.mkdir(servicedatapath)
           filename = servicedatapath+"/index."+format
 
           with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
@@ -121,9 +121,11 @@ def split_index(service):
     indexDict = {}#contains the keys of the files that will be created
     productFamilies = {}
     usageGroupings=[]
-    partition_keys = phelper.get_partition_keys('')
+    partition_keys = phelper.get_partition_keys('','')#All regions and all term types (On-Demand + Reserved)
     for pk in partition_keys:
         indexDict[pk]=[]
+
+    #print ("indexDict:[{}]".format(indexDict))
 
     fieldnames = []
 
@@ -140,8 +142,18 @@ def split_index(service):
                 indexRegion = row['From Location']
 
             #Determine the index partition the current row belongs to and append it to the corresponding array
-            indexKey = phelper.create_file_key(indexRegion,row['TermType'],row['Product Family'])
+            #TODO: add support for Reserved RDS
+            if row['TermType'] == consts.TERM_TYPE_RESERVED and service==consts.SERVICE_EC2:
+                #TODO:move the creation of the index dimensions to a common function
+                indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row['Tenancy'], row['PurchaseOption'])
+            else:
+                indexDimensions = (indexRegion,row['TermType'],row['Product Family'])
+
+            #indexKey = phelper.create_file_key(indexRegion,row['TermType'],row['Product Family'])
+            indexKey = phelper.create_file_key(indexDimensions)
+            #print ("indexKey to write to: [{}] ".format(indexKey))
             if indexKey in indexDict:
+                #print ("adding indexKey [{}] in indexDict".format(indexKey))
                 indexDict[indexKey].append(row)
 
             #Get a list of distinct product families in the index file

@@ -14,7 +14,7 @@ def calculate(pdim):
 
   log.info("Calculating S3 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_S3, phelper.get_partition_keys(pdim.region))
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_S3, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
 
   cost = 0
   pricing_records = []
@@ -25,13 +25,13 @@ def calculate(pdim):
 
   #Storage
   if pdim.storageSizeGb:
-    storageDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_STORAGE)]
+    storageDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_STORAGE])]
     query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_S3, storageDb, query, pdim.storageSizeGb, pricing_records, cost)
 
   #Data Transfer
   if pdim.dataTransferOutInternetGb:
-    transferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
+    transferDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER])]
 
     #Out to the internet
     query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
@@ -43,7 +43,7 @@ def calculate(pdim):
 
   #API Request
   if pdim.requestNumber:
-    requestDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_API_REQUEST)]
+    requestDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_API_REQUEST])]
     group = ''
     if pdim.storageClass == consts.SCRIPT_STORAGE_CLASS_STANDARD:
       if pdim.requestType in ['PUT','COPY','POST','LIST']: group=consts.S3_USAGE_GROUP_REQUESTS_TIER_1
@@ -57,7 +57,7 @@ def calculate(pdim):
 
   #Data Retrieval-SIA
   if pdim.dataRetrievalGb and pdim.storageClass == consts.SCRIPT_STORAGE_CLASS_INFREQUENT_ACCESS:
-    requestDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_API_REQUEST)]
+    requestDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_API_REQUEST])]
     query = ((priceQuery['Group'] == consts.S3_USAGE_GROUP_REQUESTS_SIA_RETRIEVAL))
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_S3, requestDb, query, pdim.dataRetrievalGb, pricing_records, cost)
 
