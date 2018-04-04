@@ -12,7 +12,7 @@ dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator"
 """
 This script gets the latest index files from the AWS Price List API.
 """
-
+#TODO: add support for term-type = onDemand, Reserved or both
 def main(argv):
 
   SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA,
@@ -22,6 +22,7 @@ def main(argv):
   
   service = ''
   format = ''
+  region = ''
 
   help_message = 'Script usage: \nget-latest-index.py --service=<s3|ec2|rds|etc> --format=<csv|json>'
 
@@ -40,6 +41,8 @@ def main(argv):
       service = opt[1]
     if opt[0] in ("-f","--format"):
       format = opt[1]
+    if opt[0] in ("-r","--region"):
+      region = opt[1]
 
 
   if not format: format = 'csv'
@@ -75,7 +78,7 @@ def main(argv):
 
           if format == 'csv':
             remove_metadata(filename)
-            split_index(s)
+            split_index(s, region)
 
 
 """
@@ -116,12 +119,12 @@ queried. This increases performance significantly.
 
 """
 
-def split_index(service):
+def split_index(service, region):
     #Split index format: region -> term type -> product family
     indexDict = {}#contains the keys of the files that will be created
     productFamilies = {}
     usageGroupings=[]
-    partition_keys = phelper.get_partition_keys('','')#All regions and all term types (On-Demand + Reserved)
+    partition_keys = phelper.get_partition_keys(region,'')#All regions and all term types (On-Demand + Reserved)
     for pk in partition_keys:
         indexDict[pk]=[]
 

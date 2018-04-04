@@ -62,7 +62,7 @@ class Ec2PriceDimension():
       self.region = kargs['region']
       self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
       self.instanceType = kargs.get('instanceType','')
-      self.instanceHours = kargs.get('instanceHours',0)
+      self.instanceHours = int(kargs.get('instanceHours',0))
       self.operatingSystem = kargs.get('operatingSystem',consts.SCRIPT_OPERATING_SYSTEM_LINUX)
 
       #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
@@ -77,27 +77,31 @@ class Ec2PriceDimension():
 
       #Reserved Instances
       self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
-      self.instanceCount = kargs.get('instanceCount',0)
+      self.instanceCount = int(kargs.get('instanceCount',0))
       self.offeringType = kargs.get('offeringType','')
-      self.years = kargs.get('years',0)
+      self.years = kargs.get('years','1')
 
 
-
-      self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
-      self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
-      self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+      #Data Transfer
+      self.dataTransferOutInternetGb = int(kargs.get('dataTransferOutInternetGb',0))
+      self.dataTransferOutIntraRegionGb = int(kargs.get('dataTransferOutIntraRegionGb',0))
+      self.dataTransferOutInterRegionGb = int(kargs.get('dataTransferOutInterRegionGb',0))
       self.toRegion = kargs.get('toRegion','')
-      self.pIops = kargs.get('pIops',0)
+
+      #Storage
+      self.pIops = int(kargs.get('pIops',0))
       self.storageMedia = ''
       self.ebsVolumeType = kargs.get('ebsVolumeType','')
       if self.ebsVolumeType in consts.EBS_VOLUME_TYPES_MAP: self.storageMedia = consts.EBS_VOLUME_TYPES_MAP[self.ebsVolumeType]['storageMedia']
       self.volumeType = ''
       if self.ebsVolumeType in consts.EBS_VOLUME_TYPES_MAP:  self.volumeType = consts.EBS_VOLUME_TYPES_MAP[self.ebsVolumeType]['volumeType']
       if not self.volumeType: self.volumeType = consts.SCRIPT_EBS_VOLUME_TYPE_GP2
-      self.ebsStorageGbMonth = kargs.get('ebsStorageGbMonth',0)
-      self.ebsSnapshotGbMonth = kargs.get('ebsSnapshotGbMonth',0)
-      self.elbHours = kargs.get('elbHours',0)
-      self.elbDataProcessedGb = kargs.get('elbDataProcessedGb',0)
+      self.ebsStorageGbMonth = int(kargs.get('ebsStorageGbMonth',0))
+      self.ebsSnapshotGbMonth = int(kargs.get('ebsSnapshotGbMonth',0))
+
+      #ELB
+      self.elbHours = int(kargs.get('elbHours',0))
+      self.elbDataProcessedGb = int(kargs.get('elbDataProcessedGb',0))
 
       #TODO: Add support for shared and dedicated tenancies
       self.tenancy = consts.SCRIPT_EC2_TENANCY_SHARED
@@ -351,12 +355,15 @@ It includes an array of PricingRecord objects, which are a breakdown of how the 
 class PricingResult():
     def __init__(self, awsPriceListApiVersion, region, total_cost, pricing_records):
         total_cost = round(total_cost,2)
-        self.version = "v2.0"
+        self.version = consts.AWS_PRICE_CALCULATOR_VERSION
         self.awsPriceListApiVersion = awsPriceListApiVersion
         self.region = region
         self.totalCost = round(total_cost,2)
         self.currency = consts.DEFAULT_CURRENCY
         self.pricingRecords = pricing_records
+
+        #TODO: populate this object
+        self.priceDimensions = {}
 
 class PricingRecord():
     def __init__(self, service, amt, desc, pricePerUnit, usgUnits, rateCode):
@@ -369,14 +376,54 @@ class PricingRecord():
         self.usageUnits = int(usgUnits)
         self.rateCode = rateCode
 
+
+"""
+This class is a container for generic price comparisons, with different values for a single parameter.
+For example, comparing a specific price calculation for different regions, or EC2 instance types, or OS
 """
 class PriceComparison():
-    total = 0
-    deltaPrevious = 0
-    deltaCheapest = 0
-    pctToPrevious = 0
-    pctToCheapest = 0
-"""
+    def __init__(self, awsPriceListApiVersion, service, sortCriteria):
+        self.version = "v1.0"
+        self.awsPriceListApiVersion = awsPriceListApiVersion
+        self.service = service
+        self.sortCriteria = sortCriteria
+        self.currency = consts.DEFAULT_CURRENCY
+        self.pricingScenarios = []
+
+class PricingScenario():
+    def __init__(self, index, id, priceDimensions, priceCalculation, totalCost, sortCriteria):
+        self.index = index
+        self.id = id
+        self.displayName = self.getDisplayName(sortCriteria)
+        self.priceDimensions = priceDimensions
+
+        #Remove redundant information from priceCalculation object.
+        #This information is already present in PriceComparison or PricingScenario objects
+        priceCalculation.pop('awsPriceListApiVersion','')
+        priceCalculation.pop('totalCost','')
+        priceCalculation.pop('service','')
+        priceCalculation.pop('currency','')
+
+
+        self.priceCalculation = priceCalculation
+        self.totalCost = totalCost
+        self.deltaPrevious = 0 #how more expensive is this item, compared to cheapest option - in $
+        self.deltaCheapest = 0 #how more expensive is this item, compared to cheapest option - in %
+        self.pctToPrevious = 0 #how more expensive is this item, compared to next lower option - in $
+        self.pctToCheapest = 0 #how more expensive is this item, compared to next lower option - in %
+        self.totalCost = totalCost
+
+    def getDisplayName(self, sortCriteria):
+        result =  ''
+        if sortCriteria == consts.SORT_CRITERIA_REGION:
+            result = consts.REGION_REPORT_MAP.get(self.id,'N/A')
+
+        #TODO: update for all supported sortCriteria options
+        else:
+            result = self.id
+
+        return result
+
 
 """
 This class is a container for price calculations between different term types, such as Demand vs. Reserved
@@ -457,24 +504,27 @@ class TermPricingAnalysis():
 
     def getUpfrontFee(self, pricingScenarioDict):
         result = 0
-        for p in pricingScenarioDict['pricingRecords']:
-            if pricingScenarioDict['priceDimensions']['offeringType'] in (consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT) \
-                and 'upfront' in p['description'].lower():
-                result = p['amount']
-                break
+        if pricingScenarioDict:
+            for p in pricingScenarioDict['pricingRecords']:
+                if pricingScenarioDict['priceDimensions']['offeringType'] in (consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT) \
+                    and 'upfront' in p['description'].lower():
+                    result = p['amount']
+                    break
         return result
 
     def getMonthlyCost(self, pricingScenarioDict):
         result = 0
-        for p in pricingScenarioDict['pricingRecords']:
-            if pricingScenarioDict['priceDimensions']['offeringType'] != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
-                and 'upfront' not in p['description'].lower():
-                return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
-
+        if pricingScenarioDict:
+            for p in pricingScenarioDict['pricingRecords']:
+                if pricingScenarioDict['priceDimensions']['offeringType'] != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
+                    and 'upfront' not in p['description'].lower():
+                    return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
+        else: return result
 
 
 class TermPricingScenario():
     def __init__(self, id, priceDimensions, pricingRecords, totalCost, onDemandTotalCost):
+        self.index = None
         self.id = id
         self.priceDimensions = priceDimensions
         self.pricingRecords = pricingRecords

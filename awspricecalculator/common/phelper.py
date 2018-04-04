@@ -8,6 +8,7 @@ from models import PricingRecord, PricingResult
 from errors import NoDataFoundError
 
 log = logging.getLogger()
+log.setLevel(consts.LOG_LEVEL)
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 site_pkgs = os.path.abspath(os.path.join(__location__, os.pardir, os.pardir,"lib", "python2.7", "site-packages" ))
@@ -170,7 +171,14 @@ def getIndexMetadata(service):
 
 
 def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
+  ts = Timestamp()
+  ts.start('tinyDbSeachCalculatePrice')
+
   resultSet = db.search(query)
+
+  ts.finish('tinyDbSeachCalculatePrice')
+  log.debug("Time to search {} pricing DB for query [{}] : [{}] ".format(service, query, ts.elapsed('tinyDbSeachCalculatePrice')))
+
   if not resultSet: raise NoDataFoundError("Could not find data for service:[{}] - query:[{}]".format(service, query))
   #print("resultSet:[{}]".format(json.dumps(resultSet,indent=4)))
   for r in resultSet:
@@ -181,6 +189,7 @@ def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
       pricingRecords.append(vars(pricing_record))
 
   return pricingRecords, cost
+
 
 
 

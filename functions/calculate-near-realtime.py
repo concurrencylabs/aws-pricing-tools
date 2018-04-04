@@ -6,8 +6,6 @@ import math
 import os
 import sys
 
-log = logging.getLogger()
-log.setLevel(logging.INFO)
 
 import boto3
 from botocore.exceptions import ClientError
@@ -24,7 +22,13 @@ import awspricecalculator.awslambda.pricing as lambdapricing
 import awspricecalculator.dynamodb.pricing as ddbpricing
 import awspricecalculator.kinesis.pricing as kinesispricing
 import awspricecalculator.common.models as data
+import awspricecalculator.common.consts as consts
 from awspricecalculator.common.errors import NoDataFoundError
+
+log = logging.getLogger()
+#log.setLevel(logging.INFO)
+
+
 
 ec2client = None
 rdsclient = None
@@ -94,6 +98,7 @@ SERVICE_RESOURCE_MAP = {SERVICE_EC2:[RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT, 
 
 
 def handler(event, context):
+    log.setLevel(consts.LOG_LEVEL)
     log.info("Received event {}".format(json.dumps(event)))
 
     try:
@@ -170,6 +175,7 @@ def handler(event, context):
         log.info("All instance types:{}".format(all_instance_types))
 
         #Calculate EC2 compute time cost
+        #TODO: add support for all available OS
         for instance_type in all_instance_types:
             try:
                 ec2_compute_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, instanceType=instance_type, instanceHours=all_instance_types[instance_type]*HOURS_DICT[DEFAULT_FORECAST_PERIOD]))

@@ -29,7 +29,6 @@ def buildSkuTable(evaluated_sku_desc):
   return result
 
 
-
 #It calculates price based on a variable price dimension. For example: by region, os, instance type, etc.
 #TODO:include sortCriteria in the parameters for this function, instead of having it in kwargs (which are meant for priceDimensions only)
 def compare(**kwargs):
@@ -40,7 +39,10 @@ def compare(**kwargs):
   criteria_array = ()
   kwargs_key = ""
   origkwargs = kwargs #we'll keep track of the original paramaters
-  
+  scenarioArray = []
+
+
+
   #Sort by AWS Region - Total Cost and To-region (for sorting by destination - find which regions are cheaper for backups)
   if sortCriteria in [consts.SORT_CRITERIA_REGION, consts.SORT_CRITERIA_TO_REGION]:
     tableCriteriaHeader = "Sorted by total cost by region\nRegion code\tRegion name\t"
@@ -73,12 +75,24 @@ def compare(**kwargs):
           p = kinesispricing.calculate(models.KinesisPriceDimension(**kwargs))
 
       except NoDataFoundError:
-        pass
-
+        continue
 
       print (json.dumps(p, indent=True))
       #Only append records for those combinations that exist in the PriceList API
-      if p['pricingRecords']: result.append((p['totalCost'],r))
+      if p['pricingRecords']: result.append((p['totalCost'],r,p))
+
+ #Sort by EC2 Instance Type
+  if sortCriteria == consts.SORT_CRITERIA_EC2_INSTANCE_TYPE:
+    tableCriteriaHeader = "Total cost sorted by EC2 Instance Type in region ["+kwargs['region']+"]\nType\t"
+    for t in consts.SUPPORTED_INSTANCE_TYPES:
+      kwargs['instanceType']=t
+      try:
+        p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
+        result.append((p['totalCost'],t,p))
+      except NoDataFoundError:
+        pass
+
+
 
 
  #Sort by EC2 Operating System
@@ -88,7 +102,7 @@ def compare(**kwargs):
       kwargs['operatingSystem']=o
       try:
         p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
-        result.append((p['totalCost'],o))
+        result.append((p['totalCost'],o,p))
       except NoDataFoundError:
         pass
 
@@ -100,7 +114,7 @@ def compare(**kwargs):
       kwargs['dbInstanceClass']=ic
       try:
         p = rdspricing.calculate(models.RdsPriceDimension(**kwargs))
-        result.append((p['totalCost'],ic))
+        result.append((p['totalCost'],ic,p))
       except NoDataFoundError:
         pass
 
@@ -118,7 +132,7 @@ def compare(**kwargs):
           else: continue
         try:
           p = rdspricing.calculate(models.RdsPriceDimension(**kwargs))
-          result.append((p['totalCost'],"{} - {}".format(e,lm)))
+          result.append((p['totalCost'],"{} - {}".format(e,lm),p))
         except NoDataFoundError:
           pass
 
@@ -129,7 +143,7 @@ def compare(**kwargs):
     for m in consts.LAMBDA_MEM_SIZES:
       kwargs['memoryMb']=m
       p = lambdapricing.calculate(models.LambdaPriceDimension(**kwargs))
-      if p['pricingRecords']: result.append((p['totalCost'],m))
+      if p['pricingRecords']: result.append((p['totalCost'],m,p))
 
 
   #Sort by S3 Storage Class
@@ -140,7 +154,7 @@ def compare(**kwargs):
     for c in criteria_array:
       kwargs['storageClass']=c
       p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
-      if p['pricingRecords']: result.append((p['totalCost'],c))
+      if p['pricingRecords']: result.append((p['totalCost'],c,p))
   
 
   sorted_result = sorted(result)
@@ -148,10 +162,14 @@ def compare(**kwargs):
   if sorted_result: cheapest_price = sorted_result[0][0]
   result = []
   i = 0
+  awsPriceListApiVersion = ''
+  pricingScenarios = []
   #TODO: use a structured object (Class or dict) instead of using indexes for each field in the table
   for r in sorted_result:
+    if i == 0: awsPriceListApiVersion = r[2]['awsPriceListApiVersion']
     if sorted_result[i][0]>0:
       #Calculate the current record relative to the last record
+      delta_cheapest = r[0]-cheapest_price
       delta_last = 0
       pct_to_last = 0
       pct_to_cheapest = 0
@@ -162,9 +180,21 @@ def compare(**kwargs):
       if cheapest_price > 0:
         pct_to_cheapest = ((r[0]-cheapest_price)/cheapest_price)*100
 
-      result.append((r[0], r[1],pct_to_cheapest, pct_to_last,(r[0]-cheapest_price),delta_last))
+
+      result.append((r[0], r[1],pct_to_cheapest, pct_to_last,delta_cheapest,delta_last))
+
+      #TODO:populate price dimensions in PricingScenario instance
+      pricingScenario = models.PricingScenario(i, r[1], {}, r[2], r[0], sortCriteria)
+      pricingScenario.deltaCheapest = delta_cheapest
+      pricingScenario.deltaPrevious = delta_last
+      pricingScenario.pctToCheapest = pct_to_cheapest
+      pricingScenario.pctToPrevious = pct_to_last
+      pricingScenarios.append(pricingScenario.__dict__)
 
     i = i+1
+
+  pricecomparison = models.PriceComparison(awsPriceListApiVersion, service, sortCriteria)
+  pricecomparison.pricingScenarios = pricingScenarios
 
   print("Sorted cost table:")
   print(tableCriteriaHeader+"Cost(USD)\t% compared to cheapest\t% compared to previous\tdelta cheapest\tdelta previous")
@@ -176,11 +206,10 @@ def compare(**kwargs):
       rowCriteriaValues = str(r[1])+"\t"
     print(rowCriteriaValues+str(r[0])+"\t"+str(r[2])+"\t"+str(r[3])+"\t"+str(r[4])+"\t"+str(r[5]))
 
-  return result
+  return pricecomparison.__dict__
 
 
 def compare_term_types(service, **kwargs):
-
   print ("kwargs:[{}]".format(kwargs))
 
   years = kwargs['years']
@@ -188,16 +217,17 @@ def compare_term_types(service, **kwargs):
 
   kwargs.pop('sortCriteria','')
 
-
   scenarioArray = []
   calcKey = ''
   awsPriceListApiVersion = ""
   onDemandTotal = 0
 
   #Iterate through applicable combinations of term types, purchase options and years
-  for t in consts.SUPPORTED_TERM_TYPES:
+  termTypes = kwargs.get('termTypes',consts.SUPPORTED_TERM_TYPES)
+  purchaseOptions = kwargs.get('purchaseOptions',consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
+  for t in termTypes:
     i = 0
-    for p in consts.EC2_SUPPORTED_PURCHASE_OPTIONS:
+    for p in purchaseOptions:
       addFlag = False
       kwargs['instanceHours'] = 365 * 24 * kwargs['instanceCount'] * int(years)
       kwargs['termType']=t
@@ -230,6 +260,8 @@ def compare_term_types(service, **kwargs):
   return pricingAnalysis.__dict__
 
 
+#TODO: use for sortCriteria calculations too (so we only have this logic once)
+#TODO: modify such that items in unsortedScenarioArray are not a tuple, but simply a pricingScenario object
 def calculate_sorted_results(unsortedScenarioArray):
 
   sorted_result = sorted(unsortedScenarioArray)
@@ -251,6 +283,7 @@ def calculate_sorted_results(unsortedScenarioArray):
         pct_to_cheapest = ((r[0]-cheapest_price)/cheapest_price)*100
 
       pricingScenario = r[1]
+      pricingScenario.index = i
       pricingScenario.deltaPrevious = round(delta_last,2)
       pricingScenario.deltaCheapest = round(r[0]-cheapest_price,2)
       pricingScenario.pctToPrevious = round(pct_to_last,2)

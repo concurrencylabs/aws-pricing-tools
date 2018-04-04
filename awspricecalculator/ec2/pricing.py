@@ -9,9 +9,7 @@ import tinydb
 log = logging.getLogger()
 
 
-
 def calculate(pdim):
-
 
   log.info("Calculating EC2 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
@@ -167,8 +165,6 @@ def calculate(pdim):
   awsPriceListApiVersion = indexMetadata['Version']
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
-
-
 
   log.debug("Total time: [{}]".format(ts.finish('totalCalculation')))
   return pricing_result.__dict__

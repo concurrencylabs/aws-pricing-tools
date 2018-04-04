@@ -1,7 +1,10 @@
-
+import os, logging
 
 # COMMON
 #_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/_/
+AWS_PRICE_CALCULATOR_VERSION = "v2.0"
+
+LOG_LEVEL = os.environ.get('LOG_LEVEL',logging.INFO)
 DEFAULT_CURRENCY = "USD"
 FORECAST_PERIOD_MONTHLY = "monthly"
 FORECAST_PERIOD_YEARLY = "yearly"
@@ -17,6 +20,7 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ca-central-1':'Canada (Central)',
               'eu-west-1':'EU (Ireland)',
               'eu-west-2':'EU (London)',
+              'eu-west-3':'EU (Paris)',
               'eu-central-1':'EU (Frankfurt)',
               'ap-northeast-1':'Asia Pacific (Tokyo)',
               'ap-northeast-2':'Asia Pacific (Seoul)',
@@ -27,7 +31,7 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'cn-northwest-1':'China (Ningxia)'
               }
 
-
+#TODO: update for China and Paris regions
 REGION_PREFIX_MAP = {'us-east-1':'',
               'us-east-2':'USE2-',
               'us-west-1':'USW1-',
@@ -35,6 +39,7 @@ REGION_PREFIX_MAP = {'us-east-1':'',
               'ca-central-1':'CAN1-',
               'eu-west-1':'EU-',
               'eu-west-2':'EUW2-',
+              'eu-west-3':'EUW3',
               'eu-central-1':'EUC1-',
               'ap-northeast-1':'APN1-',
               'ap-northeast-2':'APN2-',
@@ -78,7 +83,8 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'ap-southeast-2':'Sydney',
               'sa-east-1':'Sao Paulo',
               'ap-south-1':'Mumbai',
-              'cn-northwest-1':'Ningxia'
+              'cn-northwest-1':'Ningxia',
+              'eu-west-3':'Paris'
               }
 
 
@@ -100,12 +106,13 @@ SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERV
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-southeast-1', 'ap-southeast-2',
-                     'sa-east-1','ap-south-1','cn-northwest-1'
+                     'sa-east-1','ap-south-1','cn-northwest-1', 'eu-west-3'
                      )
 
 SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small',
                             'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge',
                             'm4.large' , 'm4.xlarge' , 'm4.2xlarge' , 'm4.4xlarge' , 'm4.10xlarge' , 'm2.xlarge',
+                            'm5.large' , 'm5.xlarge' , 'm5.2xlarge' , 'm5.4xlarge' , 'm5.12xlarge' , 'm5.24xlarge',
                             'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.large', 'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
                             'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge',
                             'r3.4xlarge' , 'r3.8xlarge' , 'x1.4xlarge' , 'x1.8xlarge' , 'x1.16xlarge' , 'x1.32xlarge',
@@ -114,6 +121,7 @@ SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , '
                             'hi1.4xlarge' , 'hs1.8xlarge',
                             'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge',
                             'c3.8xlarge' , 'c4.large' , 'c4.xlarge' , 'c4.2xlarge' , 'c4.4xlarge' , 'c4.8xlarge',
+                            'c5.large' , 'c5.xlarge' , 'c5.2xlarge' , 'c5.4xlarge' , 'c5.9xlarge' , 'c5.18xlarge',
                             'cc1.4xlarge' , 'cc2.8xlarge' , 'g2.2xlarge' , 'g2.8xlarge' , 'cg1.4xlarge' , 'd2.xlarge',
                             'd2.2xlarge' , 'd2.4xlarge' , 'd2.8xlarge')
 
@@ -160,6 +168,7 @@ SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DA
 INFINITY = 'Inf'
 
 SORT_CRITERIA_REGION = 'region'
+SORT_CRITERIA_EC2_INSTANCE_TYPE = 'instance-type'
 SORT_CRITERIA_OS = 'os'
 SORT_CRITERIA_DB_INSTANCE_CLASS = 'db-instance-class'
 SORT_CRITERIA_DB_ENGINE = 'engine'
