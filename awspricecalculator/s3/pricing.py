@@ -26,7 +26,9 @@ def calculate(pdim):
   #Storage
   if pdim.storageSizeGb:
     storageDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_STORAGE])]
-    query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]))
+    query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]) &
+             (priceQuery['Volume Type'] == consts.S3_VOLUME_TYPE_DICT[pdim.storageClass]))
+
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_S3, storageDb, query, pdim.storageSizeGb, pricing_records, cost)
 
   #Data Transfer
