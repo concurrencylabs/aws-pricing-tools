@@ -17,19 +17,21 @@ class S3PriceDimension():
           self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
           self.storageClass = ''
           self.storageSizeGb = 0
+
+          #TODO:Implement requestType and requestNumber as <requestType>Count, such that a single call to the price calculator can account for multiple request types
           self.requestType = ''
           self.requestNumber = 0
+
           self.dataRetrievalGb = 0
           self.dataTransferOutInternetGb = 0
 
-          if 'region' in kwargs: self.region = kwargs['region']
-          if 'storageClass' in kwargs: self.storageClass = kwargs['storageClass']
-          if 'storageSizeGb' in kwargs: self.storageSizeGb = kwargs['storageSizeGb']
-          if 'requestType' in kwargs: self.requestType = kwargs['requestType']
-          if 'requestNumber' in kwargs: self.requestNumber = kwargs['requestNumber']
-          if 'dataRetrievalGb' in kwargs: self.dataRetrievalGb = kwargs['dataRetrievalGb']
-          if 'dataTransferOutInternetGb' in kwargs: self.dataTransferOutInternetGb = kwargs['dataTransferOutInternetGb']
-
+          self.region = kwargs.get('region','')
+          self.storageClass = kwargs.get('storageClass','')
+          self.storageSizeGb = int(kwargs.get('storageSizeGb',0))
+          self.requestType = kwargs.get('requestType','')
+          self.requestNumber = int(kwargs.get('requestNumber',0))
+          self.dataRetrievalGb = int(kwargs.get('dataRetrievalGb',0))
+          self.dataTransferOutInternetGb = int(kwargs.get('dataTransferOutInternetGb',0))
 
           self.validate()
 
@@ -38,14 +40,20 @@ class S3PriceDimension():
       validation_ok = True
       validation_message = ""
 
+      if not self.storageClass:
+        validation_message += "Storage class cannot be empty\n"
+        validation_ok = False
       if self.storageClass and self.storageClass not in consts.SUPPORTED_S3_STORAGE_CLASSES:
-        validation_message += "Invalid storage class:["+self.storageClass+"]\n"
+        validation_message += "Invalid storage class:[{}]\n".format(self.storageClass)
         validation_ok = False
       if self.region not in consts.SUPPORTED_REGIONS:
-        validation_message += "Invalid region:["+self.region+"]\n"
+        validation_message += "Invalid region:[{}]\n".format(self.region)
+        validation_ok = False
+      if self.requestNumber and not self.requestType:
+        validation_message += "requestType cannot be empty if you specity requestNumber\n"
         validation_ok = False
       if self.requestType and self.requestType not in consts.SUPPORTED_REQUEST_TYPES:
-        validation_message += "Invalid request type:["+self.requestType+"]\n"
+        validation_message += "Invalid request type:[{}]\n".format(self.requestType)
         validation_ok = False
 
       if not validation_ok:
@@ -79,7 +87,7 @@ class Ec2PriceDimension():
       self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
       self.instanceCount = int(kargs.get('instanceCount',0))
       self.offeringType = kargs.get('offeringType','')
-      self.years = kargs.get('years','1')
+      self.years = int(kargs.get('years',1))
 
 
       #Data Transfer
@@ -442,13 +450,43 @@ class TermPricingAnalysis():
         for p in self.pricingScenarios:
             if p['priceDimensions']['termType']==termType \
                     and p['priceDimensions'].get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)==offerClass \
-                    and p['priceDimensions']['offeringType']==offerType and p['priceDimensions']['years']==str(years):
+                    and p['priceDimensions'].get('offeringType','')==offerType and p['priceDimensions']['years']==str(years):
                 return p
             if p['priceDimensions']['termType']==termType and termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND \
                     and p['priceDimensions']['years']==years:
                 return p
 
         return False
+
+    def calculate_months_to_recover(self):
+        updatedPricingScenarios = []
+
+        for s in self.pricingScenarios:
+            accumamt = 0
+            month = 1
+            while month <= int(self.years)*12:
+                if month == 1:
+                    if s['id'] == 'reserved-partial-upfront-1yr':
+                        accumamt = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED,
+                                                                                consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD,
+                                                                                consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
+                    if s['id'] == 'reserved-all-upfront-1yr':
+                        accumamt = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED,
+                                                                             consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD,
+                                                                             consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, str(self.years)))
+
+
+                if s['id'] == 'reserved-partial-upfront-1yr': accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
+                if s['id'] == 'reserved-no-upfront-1yr': accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, '1'))
+
+                if ((s['onDemandTotalCost']/(int(self.years)*12))*month) >= accumamt:
+                    break
+                month += 1
+
+            s['monthsToRecover'] = month
+            updatedPricingScenarios.append(s)
+
+        self.pricingScenarios = updatedPricingScenarios
 
 
     def get_csv_data(self):
@@ -459,10 +497,16 @@ class TermPricingAnalysis():
             for k in get_sorted_keys():
                 result[k[1]]=0
             return result
-            #return {'month':1,'onDemand':0,'reservedAllUpfront1Yr':0,'reservedPartialUpfront1Yr':0,'reservedNoUpfront1Yr':0}
 
         def get_sorted_keys():
-            return sorted(((1,'month'),(2,'onDemand'),(3,'reservedAllUpfront1Yr'),(4,'reservedPartialUpfront1Yr'),(4,'reservedNoUpfront1Yr')))
+            #TODO: add to constants
+            return sorted(((1,'month'),(2,'on-demand-1yr'),(3,'reserved-all-upfront-1yr'),(4,'reserved-partial-upfront-1yr'),(4,'reserved-no-upfront-1yr')))
+
+        def get_sorted_key_separator(k):
+            result = ','
+            sortedkeys = get_sorted_keys()
+            if k == sortedkeys[len(sortedkeys)-1]:result = '' #don't add a comma at the end of the line
+            return result
 
         month = 1
 
@@ -480,23 +524,32 @@ class TermPricingAnalysis():
         accumDict = get_csv_dict()
 
         csvdata = ""
+        sortedkeys = get_sorted_keys()
         while month <= int(self.years) * 12:
-            #row = get_csv_dict()
             accumDict['month']=month
             if month == 1:
-              accumDict['reservedPartialUpfront1Yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
+              accumDict['reserved-partial-upfront-1yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
 
-            accumDict['reservedAllUpfront1Yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, '1'))
-            accumDict['reservedPartialUpfront1Yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
-            accumDict['onDemand'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_ON_DEMAND, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, '1'))
-            accumDict['reservedNoUpfront1Yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, '1'))
+            accumDict['reserved-all-upfront-1yr'] = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, str(self.years)))
+            accumDict['reserved-partial-upfront-1yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
+            accumDict['on-demand-1yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_ON_DEMAND, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
+            accumDict['reserved-no-upfront-1yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, str(self.years)))
 
-            for k in get_sorted_keys():csvdata += str(accumDict[k[1]])+","
+
+            #for k in sortedkeys: csvdata += str(accumDict[k[1]])+get_sorted_key_separator(k)
+            for k in sortedkeys:
+                amt = 0
+                if k[1] == 'month': amt = accumDict[k[1]]
+                else: amt = round(accumDict[k[1]],2)
+                #csvdata += "{}{}".format(accumDict[k[1]],get_sorted_key_separator(k))
+                csvdata += "{}{}".format(amt,get_sorted_key_separator(k))
+
+
             csvdata += "\n"
             month += 1
 
         csvheaders = ""
-        for k in get_sorted_keys(): csvheaders += k[1]+","
+        for k in sortedkeys: csvheaders += k[1]+get_sorted_key_separator(k)
         csvheaders += "\n"
         self.csvData = csvheaders + csvdata
         return
@@ -506,7 +559,7 @@ class TermPricingAnalysis():
         result = 0
         if pricingScenarioDict:
             for p in pricingScenarioDict['pricingRecords']:
-                if pricingScenarioDict['priceDimensions']['offeringType'] in (consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT) \
+                if pricingScenarioDict['priceDimensions'].get('offeringType','') in (consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT) \
                     and 'upfront' in p['description'].lower():
                     result = p['amount']
                     break
@@ -516,7 +569,7 @@ class TermPricingAnalysis():
         result = 0
         if pricingScenarioDict:
             for p in pricingScenarioDict['pricingRecords']:
-                if pricingScenarioDict['priceDimensions']['offeringType'] != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
+                if pricingScenarioDict['priceDimensions'].get('offeringType','') != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
                     and 'upfront' not in p['description'].lower():
                     return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
         else: return result
@@ -536,9 +589,12 @@ class TermPricingScenario():
         self.onDemandTotalCost = onDemandTotalCost
         self.savingsPctvsOnDemand = 0
         self.totalSavingsvsOnDemand = 0
+        self.monthsToRecover = 0
         #TODO: implement onDemandMonthsToSavings
+        #TODO: implement as a subclass of PricingScenario
 
     def calculateOnDemandSavings(self):
+        #TODO: confirm if Partial Upfront is 1 upfront + 12 payments and if the initial payment is applied on month 1
         if self.onDemandTotalCost:
             self.savingsPctvsOnDemand  = math.fabs(round((100 * (self.totalCost - self.onDemandTotalCost) / self.onDemandTotalCost),2))
         if self.priceDimensions['termType'] == consts.SCRIPT_TERM_TYPE_ON_DEMAND:

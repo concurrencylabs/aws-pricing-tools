@@ -153,9 +153,57 @@ def compare(**kwargs):
     criteria_array = consts.SUPPORTED_S3_STORAGE_CLASSES
     for c in criteria_array:
       kwargs['storageClass']=c
-      p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
-      if p['pricingRecords']: result.append((p['totalCost'],c,p))
-  
+      try:
+        p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
+        if p['pricingRecords']: result.append((p['totalCost'],c,p))
+      except NoDataFoundError:
+        pass
+
+  #Sort by S3 Storage Size (this implies that a comma-separated list of values is supplied for storage-size-gb
+  if sortCriteria == consts.SORT_CRITERIA_S3_STORAGE_SIZE_GB:
+    tableCriteriaHeader = "Tocal cost sorted by S3 Storage Size (GB) in region ["+kwargs['region']+"]\nStorage Size GB\t"
+    criteria_array = kwargs.get('storageSizeGb','').split(consts.SORT_CRITERIA_VALUE_SEPARATOR)
+    for c in criteria_array:
+      kwargs['storageSizeGb']=int(c)
+      try:
+        p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
+        if p['pricingRecords']: result.append((p['totalCost'],c,p))
+      except NoDataFoundError:
+        pass
+
+  #Sort by S3 Data Retrieval GB (this implies that a comma-separated list of values is supplied for data-retrieval-gb)
+  #For now, it excludes data transfer out to the internet. #TODO: include a parameter for data transfer out, proportional to data retrieval
+  if sortCriteria == consts.SORT_CRITERIA_S3_DATA_RETRIEVAL_GB:
+    tableCriteriaHeader = "Tocal cost sorted by S3 Data Retrieval (GB) for Storage Class [{}] in region [{}]\nData Retrieval GB\t".format(kwargs['storageClass'],kwargs['region'])
+    criteria_array = kwargs.get('dataRetrievalGb','').split(consts.SORT_CRITERIA_VALUE_SEPARATOR)
+    for c in criteria_array:
+      kwargs['dataRetrievalGb']=int(c)
+      try:
+        p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
+        if p['pricingRecords']: result.append((p['totalCost'],c,p))
+      except NoDataFoundError:
+        pass
+
+
+  #Sort by S3 Data Retrieval GB AND Storage Class (this implies that a comma-separated list of values is supplied for data-retrieval-gb)
+  #For now, it excludes data transfer out to the internet. #TODO: include a parameter for data transfer out, proportional to data retrieval
+  if sortCriteria == consts.SORT_CRITERIA_S3_STORAGE_CLASS_DATA_RETRIEVAL_GB:
+    tableCriteriaHeader = "Tocal cost sorted by S3 Data Retrieval (GB) and all Storage Classes in region [{}]\nStorage Class + Data Retrieval GB\t".format(kwargs['region'])
+    criteria_array = kwargs.get('dataRetrievalGb','').split(consts.SORT_CRITERIA_VALUE_SEPARATOR)
+    for sc in consts.SUPPORTED_S3_STORAGE_CLASSES:
+      for c in criteria_array:
+        kwargs['storageClass'] = sc
+        kwargs['dataRetrievalGb']=int(c)
+        try:
+          p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
+          if p['pricingRecords']: result.append((p['totalCost'],"{}_{}GB".format(sc,c),p))
+        except NoDataFoundError:
+          pass
+
+
+
+
+
 
   sorted_result = sorted(result)
   log.debug ("sorted_result: {}".format(sorted_result))
@@ -229,7 +277,7 @@ def compare_term_types(service, **kwargs):
     i = 0
     for p in purchaseOptions:
       addFlag = False
-      kwargs['instanceHours'] = 365 * 24 * kwargs['instanceCount'] * int(years)
+      kwargs['instanceHours'] = 365 * 24 * int(kwargs['instanceCount']) * int(years)
       kwargs['termType']=t
       if t == consts.SCRIPT_TERM_TYPE_RESERVED:
         calcKey = "{}-{}-{}yr".format(t,p,years)
@@ -256,6 +304,7 @@ def compare_term_types(service, **kwargs):
 
   pricingAnalysis = models.TermPricingAnalysis(awsPriceListApiVersion, kwargs['region'], service, years)
   pricingAnalysis.pricingScenarios = sortedPricingScenarios
+  pricingAnalysis.calculate_months_to_recover()
   pricingAnalysis.get_csv_data()
   return pricingAnalysis.__dict__
 

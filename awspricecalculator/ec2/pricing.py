@@ -146,7 +146,7 @@ def calculate(pdim):
             (priceQuery['License Model'] == consts.EC2_LICENSE_MODEL_MAP[pdim.licenseModel]) &
             (priceQuery['OfferingClass'] == consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]) &
             (priceQuery['PurchaseOption'] == consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType] ) &
-            (priceQuery['LeaseContractLength'] == consts.EC2_RESERVED_YEAR_MAP[pdim.years] ))
+            (priceQuery['LeaseContractLength'] == consts.EC2_RESERVED_YEAR_MAP["{}".format(pdim.years)] ))
 
     hrsQuery = query & (priceQuery['Unit'] == 'Hrs' )
     qtyQuery = query & (priceQuery['Unit'] == 'Quantity' )
