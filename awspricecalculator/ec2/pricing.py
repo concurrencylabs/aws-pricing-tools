@@ -30,13 +30,6 @@ def calculate(pdim):
     ts.finish('tinyDbLoadOnDemand')
     log.debug("Time to load OnDemand DB files: [{}]".format(ts.elapsed('tinyDbLoadOnDemand')))
 
-    #cost = 0
-    #pricing_records = []
-
-    #awsPriceListApiVersion = indexMetadata['Version']
-
-    #priceQuery = tinydb.Query()
-
     #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py (create a class)
     #Compute Instance
     if pdim.instanceHours:
@@ -44,9 +37,6 @@ def calculate(pdim):
       #computeDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE)]
       computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE))]
       ts.start('tinyDbSearchComputeFile')
-      #purchaseOption = ''
-      #if pdim.offeringType in consts.EC2_PURCHASE_OPTION_MAP:
-      #  purchaseOption = consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]
       query = ((priceQuery['Instance Type'] == pdim.instanceType) &
               (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
               (priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &
@@ -58,8 +48,8 @@ def calculate(pdim):
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, computeDb, query, pdim.instanceHours, pricing_records, cost)
       log.debug("Time to search compute:[{}]".format(ts.finish('tinyDbSearchComputeFile')))
 
+
     #Data Transfer
-    #dataTransferDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER)]
     dataTransferDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
 
     #Out to the Internet
@@ -119,13 +109,10 @@ def calculate(pdim):
     #TODO: Dedicated Host
     #TODO: NAT Gateway
     #TODO: Fee
-    #TODO: Reserved
-
 
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
   #Load Reserved DBs
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
-    #dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED))
     indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
                  'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
     dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
@@ -133,7 +120,6 @@ def calculate(pdim):
     log.debug("Time to load Reserved DB files: [{}]".format(ts.elapsed('tinyDbLoadReserved')))
 
 
-    #computeDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE)]
     computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType],
                                              consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, consts.EC2_OFFERING_CLASS_STANDARD,
                                              consts.EC2_TENANCY_SHARED, consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]))]
@@ -155,10 +141,11 @@ def calculate(pdim):
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, computeDb, qtyQuery, pdim.instanceCount, pricing_records, cost)
 
     if pdim.offeringType in (consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT):
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, computeDb, hrsQuery, pdim.instanceHours, pricing_records, cost)
+      reservedInstanceHours = pdim.instanceCount * consts.HOURS_IN_MONTH * 12 * pdim.years
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, computeDb, hrsQuery, reservedInstanceHours, pricing_records, cost)
 
 
-      log.debug("Time to search:[{}]".format(ts.finish('tinyDbSearchComputeFileReserved')))
+    log.debug("Time to search:[{}]".format(ts.finish('tinyDbSearchComputeFileReserved')))
 
 
 

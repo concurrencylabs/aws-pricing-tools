@@ -1,8 +1,8 @@
-import math
+import math, logging
 import consts
 from errors import ValidationError
 
-
+log = logging.getLogger()
 
 class ElbPriceDimension():
     def __init__(self, hours, dataProcessedGb):
@@ -70,8 +70,8 @@ class Ec2PriceDimension():
       self.region = kargs['region']
       self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
       self.instanceType = kargs.get('instanceType','')
-      self.instanceHours = int(kargs.get('instanceHours',0))
       self.operatingSystem = kargs.get('operatingSystem',consts.SCRIPT_OPERATING_SYSTEM_LINUX)
+      self.instanceHours = int(kargs.get('instanceHours',0))
 
       #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
       self.preInstalledSoftware = 'NA'
@@ -85,10 +85,10 @@ class Ec2PriceDimension():
 
       #Reserved Instances
       self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
+      if not self.offeringClass: self.offeringClass = consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD
       self.instanceCount = int(kargs.get('instanceCount',0))
       self.offeringType = kargs.get('offeringType','')
       self.years = int(kargs.get('years',1))
-
 
       #Data Transfer
       self.dataTransferOutInternetGb = int(kargs.get('dataTransferOutInternetGb',0))
@@ -153,8 +153,6 @@ class Ec2PriceDimension():
           if not self.years:
               validation_message += "years cannot be empty for Reserved instances"
 
-
-
       #TODO: add validation for max number of IOPS
       #TODO: add validation for negative numbers
 
@@ -170,8 +168,7 @@ class RdsPriceDimension():
     def __init__(self, **kargs):
       self.region = kargs.get('region','')
 
-      self.termType = consts.SCRIPT_TERM_TYPE_ON_DEMAND
-
+      #DB Instance
       self.dbInstanceClass = kargs.get('dbInstanceClass','')
       self.engine = kargs.get('engine')
 
@@ -188,16 +185,25 @@ class RdsPriceDimension():
       else:
         self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_SINGLE_AZ
 
+      #OnDemand vs. Reserved
+      self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
+      self.offeringClass = consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD #TODO: add support for others, besides 'standard'
+      if not self.offeringClass: self.offeringClass = consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD
+      self.offeringType = kargs.get('offeringType','')
+      self.instanceCount = int(kargs.get('instanceCount',0))
+      self.years = int(kargs.get('years',1))
+
+      #Data Transfer
       self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
       self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
       self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
       self.toRegion = kargs.get('toRegion','')
+
+      #Storage
       self.storageGbMonth = int(kargs.get('storageGbMonth',0))
       self.storageType = kargs.get('storageType','')
-
       self.iops= kargs.get('iops',0)
       self.ioRequests= int(kargs.get('ioRequests',0))
-
       self.backupStorageGbMonth = int(kargs.get('backupStorageGbMonth',0))
 
       self.validate()
@@ -242,9 +248,29 @@ class RdsPriceDimension():
         if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and self.storageGbMonth < 100 :
           validation_message += "\nyou have specified {}GB of storage. You must specify at least 100GB of storage for io1".format(self.storageGbMonth)
 
+      if self.termType not in consts.SUPPORTED_TERM_TYPES:
+          validation_message += "term-type is "+self.termType+", must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
+
+      #TODO: move to a common place for all reserved pricing (EC2, RDS, etc.)
+      if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
+          if not self.offeringClass:
+              validation_message += "offering-class must be specified for Reserved instances\n"
+          if self.offeringClass and self.offeringClass not in (consts.SUPPORTED_EC2_OFFERING_CLASSES):
+              validation_message += "offering-class is "+self.offeringClass+", must be one of the following values:"+str(consts.SUPPORTED_EC2_OFFERING_CLASSES)
+          if not self.offeringType:
+              validation_message += "offering-type must be specified\n"
+          if self.offeringType and self.offeringType not in (consts.EC2_SUPPORTED_PURCHASE_OPTIONS):
+              validation_message += "offering-type is "+self.offeringType+", must be one of the following values:"+str(consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
+          if self.offeringType == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT and self.instanceHours:
+              validation_message += "instance-hours cannot be set if term-type=reserved and offering-type=all-upfront\n"
+          if self.offeringType == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT and not self.instanceCount:
+              validation_message += "instance-count is mandatory if term-type=reserved and offering-type=all-upfront\n"
+          if not self.years:
+              validation_message += "years cannot be empty for Reserved instances"
+
 
       if validation_message:
-          print "Error: [{}]".format(validation_message)
+          log.error("{}".format(validation_message))
           raise ValidationError(validation_message)
 
       return
@@ -283,7 +309,7 @@ class LambdaPriceDimension():
             validation_message += "Must specify a to-region if you specify data-transfer-out-interregion-gb\n"
 
         if validation_message:
-            print("Error: [{}]".format(validation_message))
+            log.error("{}".format(validation_message))
             raise ValidationError(validation_message)
 
         return
@@ -447,13 +473,15 @@ class TermPricingAnalysis():
         self.pricingScenarios = []
 
     def get_pricing_scenario(self, termType, offerClass, offerType, years):
+        #print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}]".format())
         for p in self.pricingScenarios:
+            print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}] in priceDimensions: [{}]".format(termType, offerClass, offerType, years, p['priceDimensions']))
             if p['priceDimensions']['termType']==termType \
                     and p['priceDimensions'].get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)==offerClass \
-                    and p['priceDimensions'].get('offeringType','')==offerType and p['priceDimensions']['years']==str(years):
+                    and p['priceDimensions'].get('offeringType','')==offerType and str(p['priceDimensions']['years'])==str(years):
                 return p
             if p['priceDimensions']['termType']==termType and termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND \
-                    and p['priceDimensions']['years']==years:
+                    and str(p['priceDimensions']['years'])==str(years):
                 return p
 
         return False
@@ -520,7 +548,6 @@ class TermPricingAnalysis():
                     if s['id'] == "reserved-all-upfront-1yr": reserved1YrAllUpfront = p['amount']
                 else: reserved1YrPartialUpfrontApplied = p['amount']
 
-
         accumDict = get_csv_dict()
 
         csvdata = ""
@@ -535,15 +562,11 @@ class TermPricingAnalysis():
             accumDict['on-demand-1yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_ON_DEMAND, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
             accumDict['reserved-no-upfront-1yr'] += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, str(self.years)))
 
-
-            #for k in sortedkeys: csvdata += str(accumDict[k[1]])+get_sorted_key_separator(k)
             for k in sortedkeys:
                 amt = 0
                 if k[1] == 'month': amt = accumDict[k[1]]
                 else: amt = round(accumDict[k[1]],2)
-                #csvdata += "{}{}".format(accumDict[k[1]],get_sorted_key_separator(k))
                 csvdata += "{}{}".format(amt,get_sorted_key_separator(k))
-
 
             csvdata += "\n"
             month += 1

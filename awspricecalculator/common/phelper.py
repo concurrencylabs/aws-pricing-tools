@@ -102,7 +102,7 @@ def get_partition_keys(region, term, **extraArgs):
 
     productFamilies = consts.SUPPORTED_PRODUCT_FAMILIES
 
-    #EC2 Reserved
+    #EC2 & RDS Reserved
     offeringClasses = extraArgs.get('offeringClasses',consts.EC2_OFFERING_CLASS_MAP.values())
     tenancies = extraArgs.get('tenancies',consts.EC2_TENANCY_MAP.values())
     purchaseOptions = extraArgs.get('purchaseOptions',consts.EC2_PURCHASE_OPTION_MAP.values())
@@ -120,7 +120,6 @@ def get_partition_keys(region, term, **extraArgs):
                 else:
                     result.append(create_file_key((r,t,pf)))
 
-    #print ("get_partition_keys - number of partition keys: [{}]".format(len(result)))
     return result
 
 

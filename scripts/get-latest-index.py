@@ -145,18 +145,17 @@ def split_index(service, region):
                 indexRegion = row['From Location']
 
             #Determine the index partition the current row belongs to and append it to the corresponding array
-            #TODO: add support for Reserved RDS
-            if row['TermType'] == consts.TERM_TYPE_RESERVED and service==consts.SERVICE_EC2:
+            if row['TermType'] == consts.TERM_TYPE_RESERVED:
                 #TODO:move the creation of the index dimensions to a common function
-                indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row['Tenancy'], row['PurchaseOption'])
+                if service == consts.SERVICE_EC2:
+                    indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row['Tenancy'], row['PurchaseOption'])
+                elif service == consts.SERVICE_RDS:#'Tenancy' is not part of the RDS index, therefore default it to Shared
+                    indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row.get('Tenancy',consts.EC2_TENANCY_SHARED),row['PurchaseOption'])
             else:
                 indexDimensions = (indexRegion,row['TermType'],row['Product Family'])
 
-            #indexKey = phelper.create_file_key(indexRegion,row['TermType'],row['Product Family'])
             indexKey = phelper.create_file_key(indexDimensions)
-            #print ("indexKey to write to: [{}] ".format(indexKey))
             if indexKey in indexDict:
-                #print ("adding indexKey [{}] in indexDict".format(indexKey))
                 indexDict[indexKey].append(row)
 
             #Get a list of distinct product families in the index file
@@ -170,7 +169,6 @@ def split_index(service, region):
             x += 1
 
     print ("productFamilies:{}".format(productFamilies))
-    #print "metadata: {}".format(metadata)
 
     i = 0
     #Create csv files based on the partitions that were calculated when scanning the main index.csv file
@@ -184,6 +182,7 @@ def split_index(service, region):
                 for r in indexDict[f]:
                     writer.writerow(r)
 
+    print ("Number of records in main index file: [{}]".format(x))
     print "Number of files written: [{}]".format(i)
 
 

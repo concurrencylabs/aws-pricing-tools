@@ -92,9 +92,6 @@ def compare(**kwargs):
       except NoDataFoundError:
         pass
 
-
-
-
  #Sort by EC2 Operating System
   if sortCriteria == consts.SORT_CRITERIA_OS:
     tableCriteriaHeader = "Total cost sorted by Operating System in region ["+kwargs['region']+"]\nOS\t"
@@ -258,14 +255,11 @@ def compare(**kwargs):
 
 
 def compare_term_types(service, **kwargs):
-  print ("kwargs:[{}]".format(kwargs))
-
+  log.info("kwargs:[{}]".format(kwargs))
   years = kwargs['years']
-  #termComparison = models.TermComparison('', kwargs['region'], service, years, kwargs)
-
   kwargs.pop('sortCriteria','')
-
   scenarioArray = []
+  priceCalc = {}
   calcKey = ''
   awsPriceListApiVersion = ""
   onDemandTotal = 0
@@ -291,10 +285,17 @@ def compare_term_types(service, **kwargs):
       i += 1
 
       #This flag ensures there are no duplicate OnDemand entries
+      pdims = {}
       if addFlag:
-        priceCalc = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
-        print "priceCalc: {}".format(json.dumps(priceCalc, indent=4))
-        pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
+        if service == consts.SERVICE_EC2:
+          pdims = models.Ec2PriceDimension(**kwargs)
+          priceCalc = ec2pricing.calculate(pdims)
+        elif service == consts.SERVICE_RDS:
+          pdims = models.RdsPriceDimension(**kwargs)
+          priceCalc = rdspricing.calculate(pdims)
+        log.info("priceCalc: {}".format(json.dumps(priceCalc, indent=4)))
+        #pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
+        pricingScenario = models.TermPricingScenario(calcKey, pdims.__dict__, priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
         scenarioArray.append([pricingScenario.totalCost,pricingScenario])
         if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND: onDemandTotal = priceCalc['totalCost']
         awsPriceListApiVersion = priceCalc['awsPriceListApiVersion']
