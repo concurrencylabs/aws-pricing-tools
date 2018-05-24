@@ -55,6 +55,7 @@ package:
     - awspricecalculator/data/ec2/index.*
     - awspricecalculator/data/ec2/*Reserved*
     - awspricecalculator/data/rds/index.*
+    - awspricecalculator/data/rds/*Reserved*
     - awspricecalculator/data/s3/index.*
     - awspricecalculator/data/lambda/index.*
     - awspricecalculator/data/dynamodb/index.*

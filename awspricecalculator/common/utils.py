@@ -273,6 +273,7 @@ def compare_term_types(service, **kwargs):
       addFlag = False
       kwargs['instanceHours'] = 365 * 24 * int(kwargs['instanceCount']) * int(years)
       kwargs['termType']=t
+
       if t == consts.SCRIPT_TERM_TYPE_RESERVED:
         calcKey = "{}-{}-{}yr".format(t,p,years)
         kwargs['offeringType']=p
