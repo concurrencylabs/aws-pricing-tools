@@ -79,6 +79,8 @@ SERVICE_KINESIS = 'kinesis'
 
 RESOURCE_LAMBDA_FUNCTION = 'function'
 RESOURCE_ELB = 'loadbalancer'
+RESOURCE_ALB = 'loadbalancer/app'
+RESOURCE_NLB = 'loadbalancer/net'
 RESOURCE_EC2_INSTANCE = 'instance'
 RESOURCE_RDS_DB_INSTANCE = 'db'
 RESOURCE_EBS_VOLUME = 'volume'
@@ -86,10 +88,11 @@ RESOURCE_EBS_SNAPSHOT = 'snapshot'
 RESOURCE_DDB_TABLE = 'table'
 RESOURCE_STREAM = 'stream'
 
+#This map is used to specify which services and resource types will be searched using the tag service
 SERVICE_RESOURCE_MAP = {SERVICE_EC2:[RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT, RESOURCE_EC2_INSTANCE],
                         SERVICE_RDS:[RESOURCE_RDS_DB_INSTANCE],
                         SERVICE_LAMBDA:[RESOURCE_LAMBDA_FUNCTION],
-                        SERVICE_ELB:[RESOURCE_ELB],
+                        SERVICE_ELB:[RESOURCE_ELB], #only provide RESOURCE_ELB, even for ALB and NLB
                         SERVICE_DYNAMODB:[RESOURCE_DDB_TABLE],
                         SERVICE_KINESIS:[RESOURCE_STREAM]
                         }
@@ -137,22 +140,32 @@ def handler(event, context):
         #Get tagged ELB(s) and their registered instances
         #taggedelbs = find_elbs(tagkey, tagvalue)
         taggedelbs = resource_manager.get_resource_ids(SERVICE_ELB, RESOURCE_ELB)
+        taggedalbs = resource_manager.get_resource_ids(SERVICE_ELB, RESOURCE_ALB)
+        taggednlbs = resource_manager.get_resource_ids(SERVICE_ELB, RESOURCE_NLB)
         if taggedelbs:
-            log.info("Found tagged ELBs:{}".format(taggedelbs))
-            elb_hours = len(taggedelbs)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
-            elb_instances = get_elb_instances(taggedelbs)
+            log.info("Found tagged Classic ELBs:{}".format(taggedelbs))
+            elb_instances = get_elb_instances(taggedelbs)#TODO:add support to find registered instances for ALB and NLB
             #Get all EC2 instances registered with each tagged ELB, so we can calculate ELB data processed
             #Registered instances will be used for data processed calculation, and not for instance hours, unless they're tagged.
-            if elb_instances:
-                try:
-                    log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
-                    elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
-                except Exception as failure:
-                    log.error('Error calculating costs for tagged ELBs: %s', failure.message)
-            else:
-              log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
+        if taggedalbs:
+            log.info("Found tagged Application Load Balancers:{}".format(taggedalbs))
+        if taggednlbs:
+            log.info("Found tagged Network Load Balancers:{}".format(taggednlbs))
+
+        #TODO: once pricing for ALB and NLB is added to awspricecalculator, separate hours by ELB type
+        elb_hours += (len(taggedelbs)+len(taggedalbs)+len(taggednlbs))*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
+
+
+        if elb_instances:
+            try:
+                log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
+                elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
+            except Exception as failure:
+                log.error('Error calculating costs for tagged ELBs: %s', failure.message)
         else:
-            log.info("No tagged ELBs found")
+          log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
+        #else:
+        #    log.info("No tagged ELBs found")
 
         #Get tagged EC2 instances
         ec2_instances = get_ec2_instances_by_tag(tagkey, tagvalue)
@@ -776,7 +789,8 @@ def init_clients(context):
     awsaccount = arn.split(":")[4]
     ec2client = boto3.client('ec2',region)
     rdsclient = boto3.client('rds',region)
-    elbclient = boto3.client('elb',region)
+    elbclient = boto3.client('elb',region) #classic load balancers
+    elbclientv2 = boto3.client('elbv2',region) #application and network load balancers
     lambdaclient = boto3.client('lambda',region)
     ddbclient = boto3.client('dynamodb',region)
     kinesisclient = boto3.client('kinesis',region)
@@ -818,12 +832,17 @@ class ResourceManager():
         resourceId = ''
         #See http://docs.aws.amazon.com/general/latest/gr/aws-arns-and-namespaces.html for different patterns in ARNs
         for service in (SERVICE_EC2, SERVICE_ELB, SERVICE_DYNAMODB, SERVICE_KINESIS):
-            for type in ('instance','volume','snapshot','loadbalancer','table', 'stream'):
+            for type in (RESOURCE_ALB, RESOURCE_NLB, RESOURCE_ELB):
+                if ':'+service+':' in arn and ':'+type+'/' in arn:
+                    resourceId = arn.split(':'+type+'/')[1]
+                    return self.Resource(service, type, resourceId, arn)
+
+            for type in (RESOURCE_EC2_INSTANCE,RESOURCE_EBS_VOLUME,RESOURCE_EBS_SNAPSHOT,RESOURCE_DDB_TABLE, RESOURCE_STREAM):
                 if ':'+service+':' in arn and ':'+type+'/' in arn:
                     resourceId = arn.split(':'+type+'/')[1]
                     return self.Resource(service, type, resourceId, arn)
         for service in (SERVICE_RDS, SERVICE_LAMBDA):
-            for type in ('db', 'function'):
+            for type in (RESOURCE_RDS_DB_INSTANCE, RESOURCE_LAMBDA_FUNCTION):
                 if ':'+service+':' in arn and ':'+type+':' in arn:
                     resourceId = arn.split(':'+type+':')[1]
                     return self.Resource(service, type, resourceId, arn)

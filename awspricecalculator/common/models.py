@@ -108,6 +108,7 @@ class Ec2PriceDimension():
       self.ebsSnapshotGbMonth = int(kargs.get('ebsSnapshotGbMonth',0))
 
       #ELB
+      #TODO: add support for ALB and NLB
       self.elbHours = int(kargs.get('elbHours',0))
       self.elbDataProcessedGb = int(kargs.get('elbDataProcessedGb',0))
 

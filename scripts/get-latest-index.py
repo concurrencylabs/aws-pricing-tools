@@ -111,7 +111,7 @@ def remove_metadata(index_filename):
     mf.write(metadata_json)
 
 """
-Some index files are too large. For example, the one for EC2 has more than 160K records.
+Some index files are too large. For example, the one for EC2 has more than 460K records.
 In order to make price lookup more efficient, awspricecalculator splits the
 index based on a combination of region, term type and product family. Each partition
 has a key, which is used by tinydb to load smaller files as databases that can be
