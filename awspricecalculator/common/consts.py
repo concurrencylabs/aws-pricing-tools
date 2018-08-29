@@ -109,21 +109,22 @@ SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-centr
                      'sa-east-1','ap-south-1','cn-northwest-1', 'eu-west-3'
                      )
 
-SUPPORTED_INSTANCE_TYPES = ('t1.micro' , 't2.nano' , 't2.micro' , 't2.small' , 't2.medium' , 't2.large', 't2.xlarge', 't2.2xlarge', 'm1.small',
-                            'm1.medium' , 'm1.large' , 'm1.xlarge' , 'm3.medium' , 'm3.large' , 'm3.xlarge' , 'm3.2xlarge',
-                            'm4.large' , 'm4.xlarge' , 'm4.2xlarge' , 'm4.4xlarge' , 'm4.10xlarge' , 'm2.xlarge',
-                            'm5.large' , 'm5.xlarge' , 'm5.2xlarge' , 'm5.4xlarge' , 'm5.12xlarge' , 'm5.24xlarge',
-                            'm2.2xlarge' , 'm2.4xlarge' , 'cr1.8xlarge' ,'r4.large', 'r4.xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge',
-                            'r4.16xlarge' 'r3.large' , 'r3.xlarge' , 'r3.2xlarge',
-                            'r3.4xlarge' , 'r3.8xlarge' , 'x1.4xlarge' , 'x1.8xlarge' , 'x1.16xlarge' , 'x1.32xlarge',
-                            'i2.xlarge' , 'i2.2xlarge' , 'i2.4xlarge' , 'i2.8xlarge',
-                            'i3.large', 'i3.xlarge', 'i3.2xlarge', 'i3.4xlarge', 'i3.8xlarge',
-                            'hi1.4xlarge' , 'hs1.8xlarge',
-                            'c1.medium' , 'c1.xlarge' , 'c3.large' , 'c3.xlarge' , 'c3.2xlarge' , 'c3.4xlarge',
-                            'c3.8xlarge' , 'c4.large' , 'c4.xlarge' , 'c4.2xlarge' , 'c4.4xlarge' , 'c4.8xlarge',
-                            'c5.large' , 'c5.xlarge' , 'c5.2xlarge' , 'c5.4xlarge' , 'c5.9xlarge' , 'c5.18xlarge',
-                            'cc1.4xlarge' , 'cc2.8xlarge' , 'g2.2xlarge' , 'g2.8xlarge' , 'cg1.4xlarge' , 'd2.xlarge',
-                            'd2.2xlarge' , 'd2.4xlarge' , 'd2.8xlarge')
+SUPPORTED_INSTANCE_TYPES = ('c1.medium', 'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge', 'c3.large', 'c3.xlarge',
+                'c4.2xlarge', 'c4.4xlarge', 'c4.8xlarge', 'c4.large', 'c4.xlarge', 'c5.18xlarge', 'c5.2xlarge',
+                'c5.4xlarge', 'c5.9xlarge', 'c5.large', 'c5.xlarge', 'c5d.18xlarge', 'c5d.2xlarge', 'c5d.4xlarge',
+                'c5d.9xlarge', 'c5d.large', 'c5d.xlarge', 'cc2.8xlarge', 'cg1.4xlarge', 'cr1.8xlarge', 'd2.2xlarge',
+                'd2.4xlarge', 'd2.8xlarge', 'd2.xlarge', 'f1.16xlarge', 'f1.2xlarge', 'g2.2xlarge', 'g2.8xlarge',
+                'g3.16xlarge', 'g3.4xlarge', 'g3.8xlarge', 'h1.16xlarge', 'h1.2xlarge', 'h1.4xlarge', 'h1.8xlarge',
+                'hs1.8xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge', 'i2.xlarge', 'i3.16xlarge', 'i3.2xlarge',
+                'i3.4xlarge', 'i3.8xlarge', 'i3.large', 'i3.xlarge', 'm1.large', 'm1.medium', 'm1.small', 'm1.xlarge',
+                'm2.2xlarge', 'm2.4xlarge', 'm2.xlarge', 'm3.2xlarge', 'm3.large', 'm3.medium', 'm3.xlarge',
+                'm4.10xlarge', 'm4.16xlarge', 'm4.2xlarge', 'm4.4xlarge', 'm4.large', 'm4.xlarge', 'm5.12xlarge',
+                'm5.24xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.large', 'm5.xlarge', 'p2.16xlarge', 'p2.8xlarge',
+                 'p2.xlarge', 'p3.16xlarge', 'p3.2xlarge', 'p3.8xlarge', 'r3.2xlarge', 'r3.4xlarge', 'r3.8xlarge',
+                 'r3.large', 'r3.xlarge', 'r4.16xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge', 'r4.large',
+                 'r4.xlarge', 't1.micro', 't2.2xlarge', 't2.large', 't2.medium', 't2.micro', 't2.nano', 't2.small',
+                 't2.xlarge', 'x1.16xlarge', 'x1.32xlarge', 'x1e.16xlarge', 'x1e.2xlarge', 'x1e.32xlarge',
+                 'x1e.4xlarge', 'x1e.8xlarge', 'x1e.xlarge')
 
 SERVICE_INDEX_MAP = {SERVICE_S3:'AmazonS3', SERVICE_EC2:'AmazonEC2', SERVICE_RDS:'AmazonRDS',
                      SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB', SERVICE_KINESIS:'AmazonKinesis'}
@@ -194,11 +195,15 @@ EC2_OPERATING_SYSTEM_RHEL = 'RHEL'
 
 SCRIPT_EC2_TENANCY_SHARED = 'shared'
 SCRIPT_EC2_TENANCY_DEDICATED = 'dedicated'
+SCRIPT_EC2_TENANCY_HOST = 'host'
 
 EC2_TENANCY_SHARED = 'Shared'
 EC2_TENANCY_DEDICATED = 'Dedicated'
+EC2_TENANCY_HOST = 'Host'
 
-EC2_TENANCY_MAP = {SCRIPT_EC2_TENANCY_SHARED:EC2_TENANCY_SHARED, SCRIPT_EC2_TENANCY_DEDICATED:EC2_TENANCY_DEDICATED}
+EC2_TENANCY_MAP = {SCRIPT_EC2_TENANCY_SHARED:EC2_TENANCY_SHARED,
+                   SCRIPT_EC2_TENANCY_DEDICATED:EC2_TENANCY_DEDICATED,
+                   SCRIPT_EC2_TENANCY_HOST:EC2_TENANCY_HOST}
 
 
 STORAGE_MEDIA_SSD = "SSD-backed"

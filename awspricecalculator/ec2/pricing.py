@@ -121,7 +121,7 @@ def calculate(pdim):
 
 
     computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType],
-                                             consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, consts.EC2_OFFERING_CLASS_STANDARD,
+                                             consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, pdim.offeringClass,
                                              consts.EC2_TENANCY_SHARED, consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]))]
 
     ts.start('tinyDbSearchComputeFileReserved')

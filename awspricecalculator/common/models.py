@@ -76,10 +76,7 @@ class Ec2PriceDimension():
       #TODO: Add support for pre-installed software (i.e. SQL Web in Windows instances)
       self.preInstalledSoftware = 'NA'
 
-      #TODO: Add support for different license models
       self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
-      if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS:
-          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_INCLUDED
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:
           self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_BYOL
 
@@ -171,7 +168,10 @@ class RdsPriceDimension():
 
       #DB Instance
       self.dbInstanceClass = kargs.get('dbInstanceClass','')
-      self.engine = kargs.get('engine')
+
+      if kargs.get('engine',''): self.engine = kargs['engine']
+      else: self.engine = consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL
+
 
       self.licenseModel = kargs.get('licenseModel')
       if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL,
@@ -180,11 +180,10 @@ class RdsPriceDimension():
 
       self.instanceHours = int(kargs.get('instanceHours',0))
 
-      self.multiAz = kargs.get('multiAz',False)
-      if self.multiAz:
-        self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ
-      else:
-        self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_SINGLE_AZ
+      tmpmultiaz = kargs.get('multiAz','false').lower()
+      self.deploymentOption = ''
+      if tmpmultiaz == 'true': self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ
+      if tmpmultiaz == 'false': self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_SINGLE_AZ
 
       #OnDemand vs. Reserved
       self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
@@ -203,7 +202,7 @@ class RdsPriceDimension():
       #Storage
       self.storageGbMonth = int(kargs.get('storageGbMonth',0))
       self.storageType = kargs.get('storageType','')
-      self.iops= kargs.get('iops',0)
+      self.iops= int(kargs.get('iops',0))
       self.ioRequests= int(kargs.get('ioRequests',0))
       self.backupStorageGbMonth = int(kargs.get('backupStorageGbMonth',0))
 
@@ -223,6 +222,7 @@ class RdsPriceDimension():
     def validate(self):
       #TODO: add validations for data transfer
       #TODO: add validations for different combinations of engine, edition and license
+      #TODO: add validations for multiAz (deploymentOption cannot be empty)
       validation_ok = True
       validation_message = ""
       valid_engine = True
@@ -246,7 +246,7 @@ class RdsPriceDimension():
           validation_message += "\n" + "storage-type must be one of the following values:"+str(consts.SUPPORTED_RDS_STORAGE_TYPES)
         if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and not self.iops:
           validation_message += "\n" + "you must specify an iops value for storage type io1"
-        if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and self.storageGbMonth < 100 :
+        if self.storageType == consts.SCRIPT_RDS_STORAGE_TYPE_IO1 and self.storageGbMonth and self.storageGbMonth < 100 :
           validation_message += "\nyou have specified {}GB of storage. You must specify at least 100GB of storage for io1".format(self.storageGbMonth)
 
       if self.termType not in consts.SUPPORTED_TERM_TYPES:
@@ -472,11 +472,12 @@ class TermPricingAnalysis():
         self.currency = consts.DEFAULT_CURRENCY
         self.years = years
         self.pricingScenarios = []
+        self.monthlyBreakdown = []
 
     def get_pricing_scenario(self, termType, offerClass, offerType, years):
         #print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}]".format())
         for p in self.pricingScenarios:
-            print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}] in priceDimensions: [{}]".format(termType, offerClass, offerType, years, p['priceDimensions']))
+            #print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}] in priceDimensions: [{}]".format(termType, offerClass, offerType, years, p['priceDimensions']))
             if p['priceDimensions']['termType']==termType \
                     and p['priceDimensions'].get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)==offerClass \
                     and p['priceDimensions'].get('offeringType','')==offerType and str(p['priceDimensions']['years'])==str(years):
@@ -495,18 +496,18 @@ class TermPricingAnalysis():
             month = 1
             while month <= int(self.years)*12:
                 if month == 1:
-                    if s['id'] == 'reserved-partial-upfront-{}yr'.format(self.years):
+                    if s['id'] == 'reserved-{}-partial-upfront-{}yr'.format(s['priceDimensions']['offeringClass'],self.years):
                         accumamt = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED,
-                                                                                consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD,
+                                                                                s['priceDimensions']['offeringClass'],
                                                                                 consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
-                    if s['id'] == 'reserved-all-upfront-{}yr'.format(self.years):
+                    if s['id'] == 'reserved-{}-all-upfront-{}yr'.format(s['priceDimensions']['offeringClass'],self.years):
                         accumamt = self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED,
-                                                                             consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD,
+                                                                             s['priceDimensions']['offeringClass'],
                                                                              consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, str(self.years)))
 
 
-                if s['id'] == 'reserved-partial-upfront-{}yr'.format(self.years): accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, self.years))
-                if s['id'] == 'reserved-no-upfront-{}yr'.format(self.years): accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, self.years))
+                if s['id'] == 'reserved-{}-partial-upfront-{}yr'.format(s['priceDimensions']['offeringClass'],self.years): accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, s['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, self.years))
+                if s['id'] == 'reserved-{}-no-upfront-{}yr'.format(s['priceDimensions']['offeringClass'], self.years): accumamt += self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, s['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, self.years))
 
                 if ((s['onDemandTotalCost']/(int(self.years)*12))*month) >= accumamt:
                     break
@@ -518,6 +519,107 @@ class TermPricingAnalysis():
         self.pricingScenarios = updatedPricingScenarios
 
 
+    def calculate_monthly_breakdown(self):
+        #TODO: validate that years is either 1 or 3
+
+        """
+        def get_csv_dict():
+            result = {}
+            for k in get_sorted_keys():
+                result[k[1]]=0
+            return result
+
+        def get_sorted_scenario_keys():
+            #TODO: add to constants
+            #TODO: update order in which scenarios get displayed
+            return sorted(((1,'month'),(2,'on-demand-{}yr'.format(self.years)),(3,'reserved-all-upfront-{}yr'.format(self.years)),
+                           (4,'reserved-partial-upfront-{}yr'.format(self.years)),(4,'reserved-no-upfront-{}yr'.format(self.years))))
+
+        def get_sorted_key_separator(k):
+            result = ','
+            sortedkeys = get_sorted_keys()
+            if k == sortedkeys[len(sortedkeys)-1]:result = '' #don't add a comma at the end of the line
+            return result
+        """
+
+
+        #TODO: see if this block can be removed
+        """
+        for s in self.pricingScenarios:
+            if s['id'] == "on-demand-{}yr".format(self.years): onDemand = s['pricingRecords']
+            if s['id'] == "reserved-no-upfront-{}yr".format(self.years): reserved1YrNoUpfront = s['pricingRecords']
+            if s['id'] == "reserved-all-upfront-{}yr".format(self.years): reserved1YrAllUpfrontAccum = s['totalCost']
+            for p in s['pricingRecords']:
+                if 'upfront' in p['description'].lower():
+                    if s['id'] == "reserved-partial-upfront-{}yr".format(self.years): reserved1YrPartialUpfront = p['amount']
+                    if s['id'] == "reserved-all-upfront-{}yr".format(self.years): reserved1YrAllUpfront = p['amount']
+                else: reserved1YrPartialUpfrontApplied = p['amount']
+
+        accumDict = get_csv_dict()
+        """
+        monthlyScenarios = []
+        month = 1
+        while month <= int(self.years) * 12:
+            monthDict = {}
+            monthDict['month']=month
+            for p in self.pricingScenarios: #at this point, scenarios are already sorted
+                #TODO: confirm if partial upfront also gets the monthly fee applied on the first month, or not.
+                #if month == 1 and 'partial-upfront' in p['id']:
+                #      monthDict['reserved-{}-partial-upfront-{}yr'.format(p['priceDimensions']['offeringClass'], self.years)] = \
+                #          self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
+
+                if 'all-upfront' in p['id']:
+                    monthDict['reserved-{}-all-upfront-{}yr'.format(p['priceDimensions']['offeringClass'], self.years)] = \
+                        self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT, str(self.years)))
+                if 'partial-upfront' in p['id']:
+                      #monthDict['reserved-{}-partial-upfront-{}yr'.format(p['priceDimensions']['offeringClass'], self.years)] = \
+                      #    self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years)))
+                    monthDict['reserved-{}-partial-upfront-{}yr'.format(p['priceDimensions']['offeringClass'], self.years)] = \
+                        round(self.getUpfrontFee(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years))) + \
+                        month * self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years))),2)
+                if 'no-upfront' in p['id']:
+                    monthDict['reserved-{}-no-upfront-{}yr'.format(p['priceDimensions']['offeringClass'], self.years)] = \
+                        round(month * self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_RESERVED, p['priceDimensions']['offeringClass'], consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, str(self.years))),2)
+                if 'on-demand' in p['id']:
+                    monthDict['on-demand-{}yr'.format(self.years)] = \
+                        round(month * self.getMonthlyCost(self.get_pricing_scenario(consts.SCRIPT_TERM_TYPE_ON_DEMAND, consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT, str(self.years))),2)
+            monthlyScenarios.append(monthDict)
+            month += 1
+
+        self.monthlyBreakdown = monthlyScenarios
+        return
+
+
+    def get_csv_data(self):
+      #First, sort keys from high to low total
+      finalMonth = self.monthlyBreakdown[len(self.monthlyBreakdown)-1]
+      unsorted = []
+      sortedscenarios = []
+      csvtxt = ""
+      for k in finalMonth.keys():unsorted.append((finalMonth[k],k))
+      sortedscenarios = sorted(unsorted)
+      comma = ","
+      i = 0
+      #print header row
+      for s in sortedscenarios:
+          i += 1
+          if i == len(sortedscenarios): comma = "" #avoid comma at the end of each row
+          csvtxt += "{}{}".format(s[1],comma) #print headers
+      #print monthly scenario rows
+      for m in self.monthlyBreakdown:
+        csvtxt += "\n"
+        comma = ","
+        i = 0
+        for s in sortedscenarios:
+            i += 1
+            if i == len(sortedscenarios): comma = "" #avoid comma at the end of each row
+            csvtxt += "{}{}".format(m[s[1]],comma)
+      self.csvData = csvtxt
+      return
+
+
+
+    """
     def get_csv_data(self):
         #TODO: validate that years is either 1 or 3
 
@@ -580,6 +682,7 @@ class TermPricingAnalysis():
         csvheaders += "\n"
         self.csvData = csvheaders + csvdata
         return
+    """
 
 
     def getUpfrontFee(self, pricingScenarioDict):
