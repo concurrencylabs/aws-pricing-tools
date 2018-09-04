@@ -227,6 +227,8 @@ class RdsPriceDimension():
       validation_message = ""
       valid_engine = True
 
+      if not isinstance(self.multiAz, bool):
+        validation_message = "\n you have specified multiAz as [{}], it has to be boolean".format(self.multiAz)
       if self.dbInstanceClass and self.dbInstanceClass not in consts.SUPPORTED_RDS_INSTANCE_CLASSES:
         validation_message = "\n" + "db-instance-class must be one of the following values:"+str(consts.SUPPORTED_RDS_INSTANCE_CLASSES)
       if self.region not in consts.SUPPORTED_REGIONS:

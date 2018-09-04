@@ -34,8 +34,10 @@ def calculate(pdim):
     skuLicenseModel = consts.RDS_LICENSE_MODEL_MAP[pdim.licenseModel]
 
   deploymentOptionCondition = pdim.deploymentOption
-  if 'sqlserver' in pdim.engine and pdim.deploymentOption == consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ:
-    deploymentOptionCondition = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ_MIRROR
+
+  #'Multi-AZ (SQL Server Mirror)' is no longer available in pricing index
+  #if 'sqlserver' in pdim.engine and pdim.deploymentOption == consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ:
+  #  deploymentOptionCondition = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ_MIRROR
 
 
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
