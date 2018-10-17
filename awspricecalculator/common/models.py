@@ -79,7 +79,7 @@ class Ec2PriceDimension():
       #TODO: Add support for different license models
       self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS:
-          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_INCLUDED
+          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:
           self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_BYOL
 
@@ -107,10 +107,15 @@ class Ec2PriceDimension():
       self.ebsStorageGbMonth = int(kargs.get('ebsStorageGbMonth',0))
       self.ebsSnapshotGbMonth = int(kargs.get('ebsSnapshotGbMonth',0))
 
-      #ELB
-      #TODO: add support for ALB and NLB
+      #Elastic Load Balancer (classic)
       self.elbHours = int(kargs.get('elbHours',0))
       self.elbDataProcessedGb = int(kargs.get('elbDataProcessedGb',0))
+
+      #Application Load Balancer
+      self.albHours = int(kargs.get('albHours',0))
+      self.albLcus= int(kargs.get('albLcus',0))
+
+      #TODO: add support for Network Load Balancer
 
       #TODO: Add support for shared and dedicated tenancies
       self.tenancy = consts.SCRIPT_EC2_TENANCY_SHARED
