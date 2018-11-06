@@ -136,6 +136,8 @@ def handler(event, context):
         elb_hours = 0
         elb_data_processed_gb = 0
         elb_instances = {}
+        alb_hours = 0
+        alb_lcus = 0
 
         #Get tagged ELB(s) and their registered instances
         #taggedelbs = find_elbs(tagkey, tagvalue)
@@ -153,7 +155,8 @@ def handler(event, context):
             log.info("Found tagged Network Load Balancers:{}".format(taggednlbs))
 
         #TODO: once pricing for ALB and NLB is added to awspricecalculator, separate hours by ELB type
-        elb_hours += (len(taggedelbs)+len(taggedalbs)+len(taggednlbs))*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
+        elb_hours += (len(taggedelbs)+len(taggednlbs))*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
+        alb_hours += len(taggedalbs)*HOURS_DICT[DEFAULT_FORECAST_PERIOD]
 
 
         if elb_instances:
@@ -174,12 +177,22 @@ def handler(event, context):
         else:
             log.info("Didn't find any tagged, running EC2 instances")
 
-        #Calculate ELB cost
+        #Calculate Classic ELB cost
         if elb_hours:
             elb_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, elbHours=elb_hours,elbDataProcessedGb=elb_data_processed_gb))
             if 'pricingRecords' in elb_cost:
                 pricing_records.extend(elb_cost['pricingRecords'])
                 ec2Cost = ec2Cost + elb_cost['totalCost']
+
+        #Calculate Application Load Balancer cost
+        if alb_hours:
+            alb_lcus = calculate_alb_lcus(start, end, taggedalbs)*calculate_forecast_factor()
+            alb_cost = ec2pricing.calculate(data.Ec2PriceDimension(region=region, albHours=alb_hours, albLcus=alb_lcus))
+            if 'pricingRecords' in alb_cost:
+                pricing_records.extend(alb_cost['pricingRecords'])
+                ec2Cost = ec2Cost + alb_cost['totalCost']
+
+
 
         #Calculate EC2 compute time for ALL instance types found (subscribed to ELB or not) - group by instance types
         all_instance_dict = {}
@@ -268,6 +281,7 @@ def handler(event, context):
 
         #Lambda functions
         #TODO: add support for lambda function qualifiers
+        #TODO: calculate data ingested into CloudWatch Logs
         lambdafunctions = resource_manager.get_resources(SERVICE_LAMBDA, RESOURCE_LAMBDA_FUNCTION)
         for func in lambdafunctions:
           executions = calculate_lambda_executions(start, end, func)
@@ -598,6 +612,34 @@ def calculate_elb_data_processed(start, end, elb_instances):
     log.info ("Total Bytes processed by ELBs in time window of ["+str(METRIC_WINDOW)+"] minutes :["+str(result)+"]")
 
     return result
+
+"""
+For each ALB, get the value for the ConsumedLCUs metric
+"""
+
+
+def calculate_alb_lcus(start, end, albs):
+    result = 0
+
+    for a in albs:
+        log.info("Getting ConsumedLCUs for ALB: [{}]".format(a))
+        metricsLcus = cwclient.get_metric_statistics(
+            Namespace='AWS/ApplicationELB',
+            MetricName='ConsumedLCUs',
+            Dimensions=[{'Name': 'LoadBalancer','Value': "app/{}".format(a)}],
+            StartTime=start,
+            EndTime=end,
+            Period=60*METRIC_WINDOW,
+            Statistics = ['Sum']
+        )
+        for datapoint in metricsLcus['Datapoints']:
+            result += datapoint.get('Sum',0)
+
+    log.info ("Total ConsumedLCUs consumed by ALBs in time window of ["+str(METRIC_WINDOW)+"] minutes :["+str(result)+"]")
+
+    return result
+
+
 
 
 

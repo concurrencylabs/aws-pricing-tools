@@ -33,14 +33,13 @@ def calculate(pdim):
     #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py (create a class)
     #Compute Instance
     if pdim.instanceHours:
-
-      #computeDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE)]
       computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE))]
       ts.start('tinyDbSearchComputeFile')
       query = ((priceQuery['Instance Type'] == pdim.instanceType) &
               (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
               (priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &
               (priceQuery['Pre Installed S/W'] == pdim.preInstalledSoftware) &
+              (priceQuery['CapacityStatus'] == consts.EC2_CAPACITY_RESERVATION_STATUS_MAP[pdim.capacityReservationStatus]) &
               (priceQuery['License Model'] == consts.EC2_LICENSE_MODEL_MAP[pdim.licenseModel]))# &
               #(priceQuery['OfferingClass'] == pdim.offeringClass) &
               #(priceQuery['PurchaseOption'] == purchaseOption ))
@@ -91,11 +90,10 @@ def calculate(pdim):
       query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'EBS:SnapshotUsage'))#EBS:SnapshotUsage comes with a prefix in the PriceList API file (i.e. EU-EBS:SnapshotUsage)
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_EBS, snapshotDb, query, pdim.ebsSnapshotGbMonth, pricing_records, cost)
 
-    #Load Balancer
+    #Classic Load Balancer
     if pdim.elbHours:
       #elbDb = dbs[phelper.create_file_key(consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER)]
       elbDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER))]
-      #TODO:Add support for LoadBalancing:Application
       query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'LoadBalancerUsage') & (priceQuery['operation'] == 'LoadBalancing'))
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbHours, pricing_records, cost)
 
@@ -104,6 +102,20 @@ def calculate(pdim):
       elbDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_LOAD_BALANCER))]
       query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'DataProcessing-Bytes') & (priceQuery['operation'] == 'LoadBalancing'))
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, elbDb, query, pdim.elbDataProcessedGb, pricing_records, cost)
+
+    #Application Load Balancer
+    #TODO: add support for Network Load Balancer
+    if pdim.albHours:
+      albDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_APPLICATION_LOAD_BALANCER))]
+      query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'LoadBalancerUsage') & (priceQuery['operation'] == 'LoadBalancing:Application'))
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, albDb, query, pdim.albHours, pricing_records, cost)
+
+    if pdim.albLcus:
+      albDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_APPLICATION_LOAD_BALANCER))]
+      query = ((priceQuery['usageType'] == consts.REGION_PREFIX_MAP[pdim.region]+'LCUUsage') & (priceQuery['operation'] == 'LoadBalancing:Application'))
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_ELB, albDb, query, pdim.albLcus, pricing_records, cost)
+
+
 
     #TODO: EIP
     #TODO: Dedicated Host

@@ -77,8 +77,14 @@ class Ec2PriceDimension():
       self.preInstalledSoftware = 'NA'
 
       self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
+      if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS:
+          self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_NONE_REQUIRED
       if self.operatingSystem == consts.SCRIPT_OPERATING_SYSTEM_WINDOWS_BYOL:
           self.licenseModel = consts.SCRIPT_EC2_LICENSE_MODEL_BYOL
+
+      #Capacity Reservations
+      #TODO: add support for allocated and unused Capacity Reservations
+      self.capacityReservationStatus = consts.SCRIPT_EC2_CAPACITY_RESERVATION_STATUS_USED
 
       #Reserved Instances
       self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
@@ -104,12 +110,17 @@ class Ec2PriceDimension():
       self.ebsStorageGbMonth = int(kargs.get('ebsStorageGbMonth',0))
       self.ebsSnapshotGbMonth = int(kargs.get('ebsSnapshotGbMonth',0))
 
-      #ELB
-      #TODO: add support for ALB and NLB
+      #Elastic Load Balancer (classic)
       self.elbHours = int(kargs.get('elbHours',0))
       self.elbDataProcessedGb = int(kargs.get('elbDataProcessedGb',0))
 
-      #TODO: Add support for shared and dedicated tenancies
+      #Application Load Balancer
+      self.albHours = int(kargs.get('albHours',0))
+      self.albLcus= int(kargs.get('albLcus',0))
+
+      #TODO: add support for Network Load Balancer
+
+      #TODO: Add support for dedicated tenancies
       self.tenancy = consts.SCRIPT_EC2_TENANCY_SHARED
 
       self.validate()
@@ -227,6 +238,8 @@ class RdsPriceDimension():
       validation_message = ""
       valid_engine = True
 
+      if not isinstance(self.multiAz, bool):
+        validation_message = "\n you have specified multiAz as [{}], it has to be boolean".format(self.multiAz)
       if self.dbInstanceClass and self.dbInstanceClass not in consts.SUPPORTED_RDS_INSTANCE_CLASSES:
         validation_message = "\n" + "db-instance-class must be one of the following values:"+str(consts.SUPPORTED_RDS_INSTANCE_CLASSES)
       if self.region not in consts.SUPPORTED_REGIONS:
