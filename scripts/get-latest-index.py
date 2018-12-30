@@ -124,7 +124,7 @@ def split_index(service, region):
     indexDict = {}#contains the keys of the files that will be created
     productFamilies = {}
     usageGroupings=[]
-    partition_keys = phelper.get_partition_keys(region,'')#All regions and all term types (On-Demand + Reserved)
+    partition_keys = phelper.get_partition_keys(service, region,'')#All regions and all term types (On-Demand + Reserved)
     for pk in partition_keys:
         indexDict[pk]=[]
 
@@ -145,14 +145,17 @@ def split_index(service, region):
                 indexRegion = row['From Location']
 
             #Determine the index partition the current row belongs to and append it to the corresponding array
-            if row['TermType'] == consts.TERM_TYPE_RESERVED:
+            if row.get('TermType','') == consts.TERM_TYPE_RESERVED:
                 #TODO:move the creation of the index dimensions to a common function
                 if service == consts.SERVICE_EC2:
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row['Tenancy'], row['PurchaseOption'])
                 elif service == consts.SERVICE_RDS:#'Tenancy' is not part of the RDS index, therefore default it to Shared
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row.get('Tenancy',consts.EC2_TENANCY_SHARED),row['PurchaseOption'])
             else:
-                indexDimensions = (indexRegion,row['TermType'],row['Product Family'])
+                if service == consts.SERVICE_EC2:
+                    indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['Tenancy'])
+                else:
+                    indexDimensions = (indexRegion,row['TermType'],row['Product Family'])
 
             indexKey = phelper.create_file_key(indexDimensions)
             if indexKey in indexDict:
@@ -167,6 +170,7 @@ def split_index(service, region):
                 productFamilies[productFamily].append(usageGroup)
 
             x += 1
+            if x % 1000 == 0: print("Processed row [{}]".format(x))
 
     print ("productFamilies:{}".format(productFamilies))
 
@@ -184,6 +188,7 @@ def split_index(service, region):
 
     print ("Number of records in main index file: [{}]".format(x))
     print "Number of files written: [{}]".format(i)
+    return
 
 
 def get_index_file_name(service, name, format):

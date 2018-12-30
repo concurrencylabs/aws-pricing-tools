@@ -77,14 +77,18 @@ def compare(**kwargs):
       except NoDataFoundError:
         continue
 
-      print (json.dumps(p, indent=True))
+      log.debug ("PricingResult: [{}]".format(json.dumps(p, indent=4)))
       #Only append records for those combinations that exist in the PriceList API
       if p['pricingRecords']: result.append((p['totalCost'],r,p))
 
  #Sort by EC2 Instance Type
   if sortCriteria == consts.SORT_CRITERIA_EC2_INSTANCE_TYPE:
     tableCriteriaHeader = "Total cost sorted by EC2 Instance Type in region ["+kwargs['region']+"]\nType\t"
-    for t in consts.SUPPORTED_INSTANCE_TYPES:
+    instanceTypes = kwargs.get('instanceTypes','')
+    if instanceTypes: instanceTypes = instanceTypes.split(',')
+    else: instanceTypes=consts.SUPPORTED_INSTANCE_TYPES
+    log.info("instanceTypes: [{}]".format(instanceTypes))
+    for t in instanceTypes:
       kwargs['instanceType']=t
       try:
         p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))

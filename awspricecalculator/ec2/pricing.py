@@ -7,6 +7,8 @@ from ..common.models import PricingResult
 import tinydb
 
 log = logging.getLogger()
+regiondbs = {}
+indexMetadata = {}
 
 
 def calculate(pdim):
@@ -23,17 +25,25 @@ def calculate(pdim):
   pricing_records = []
   priceQuery = tinydb.Query()
 
+  global regiondbs
+  global indexMetadata
+
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
     #Load On-Demand DBs
-    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+    dbs = regiondbs.get(consts.SERVICE_EC2+pdim.region+pdim.termType,{})
+    if not dbs:
+      dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+      regiondbs[consts.SERVICE_EC2+pdim.region+pdim.termType]=dbs
+
     ts.finish('tinyDbLoadOnDemand')
     log.debug("Time to load OnDemand DB files: [{}]".format(ts.elapsed('tinyDbLoadOnDemand')))
 
     #TODO: Move common operations to a common module, and leave only EC2-specific operations in ec2/pricing.py (create a class)
+    #TODO: support all tenancy types (Host and Dedicated)
     #Compute Instance
     if pdim.instanceHours:
-      computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE))]
+      computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, consts.EC2_TENANCY_SHARED))]
       ts.start('tinyDbSearchComputeFile')
       query = ((priceQuery['Instance Type'] == pdim.instanceType) &
               (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
@@ -125,9 +135,18 @@ def calculate(pdim):
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
   #Load Reserved DBs
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
-    indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
-                 'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
-    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
+    #indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
+    #             'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
+    #Load all values for offeringClasses, tenancies and purchaseOptions
+    indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
+                 'tenancies':consts.EC2_TENANCY_MAP.values(), 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
+    #TODO: load Reserved DBs in an even more granular way (by purchase options and tenancy based on input pdims
+    dbs = regiondbs.get(consts.SERVICE_EC2+pdim.region+pdim.termType,{})
+    if not dbs:
+      dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
+      regiondbs[consts.SERVICE_EC2+pdim.region+pdim.termType]=dbs
+    log.debug("dbs keys:{}".format(dbs.keys()))
+
     ts.finish('tinyDbLoadReserved')
     log.debug("Time to load Reserved DB files: [{}]".format(ts.elapsed('tinyDbLoadReserved')))
 

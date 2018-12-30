@@ -90,7 +90,7 @@ def buildSkuTable(evaluated_sku_desc):
 Calculates the keys that will be used to partition big index files into smaller pieces.
 If no term is specified, the function will consider On-Demand and Reserved
 """
-def get_partition_keys(region, term, **extraArgs):
+def get_partition_keys(service, region, term, **extraArgs):
     result = []
     if region:
       regions = [consts.REGION_MAP[region]]
@@ -100,7 +100,8 @@ def get_partition_keys(region, term, **extraArgs):
     if term: terms = [consts.TERM_TYPE_MAP[term]]
     else: terms = consts.TERM_TYPE_MAP.values()
 
-    productFamilies = consts.SUPPORTED_PRODUCT_FAMILIES
+    #productFamilies = consts.SUPPORTED_PRODUCT_FAMILIES
+    productFamilies = consts.SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT[service]
 
     #EC2 & RDS Reserved
     offeringClasses = extraArgs.get('offeringClasses',consts.EC2_OFFERING_CLASS_MAP.values())
@@ -108,17 +109,24 @@ def get_partition_keys(region, term, **extraArgs):
     purchaseOptions = extraArgs.get('purchaseOptions',consts.EC2_PURCHASE_OPTION_MAP.values())
 
     indexDict = {}
+    #TODO: filter by service, to speed up file loading and to avoid max open files limit
     for r in regions:
         for t in terms:
             for pf in productFamilies:
-                #Reserved EC2 instances have more dimensions for index creation
+                #Reserved EC2 & DB instances have more dimensions for index creation
                 if t == consts.TERM_TYPE_RESERVED:
-                    for oc in offeringClasses:
-                        for ten in tenancies:
-                            for po in purchaseOptions:
-                              result.append(create_file_key((r,t,pf,oc,ten, po)))
+                    if pf in consts.SUPPORTED_RESERVED_PRODUCT_FAMILIES:
+                        for oc in offeringClasses:
+                            for ten in tenancies:
+                                for po in purchaseOptions:
+                                  result.append(create_file_key((r,t,pf,oc,ten, po)))
                 else:
-                    result.append(create_file_key((r,t,pf)))
+                    #OnDemand EC2 Instances use Tenancy as a dimension for index creation
+                    if pf == consts.PRODUCT_FAMILY_COMPUTE_INSTANCE:
+                        for ten in tenancies:
+                            result.append(create_file_key((r,t,pf,ten)))
+                    else:
+                        result.append(create_file_key((r,t,pf)))
 
     return result
 

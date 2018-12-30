@@ -33,7 +33,7 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'cn-northwest-1':'China (Ningxia)'
               }
 
-#TODO: update for China and Paris regions
+#TODO: update for China region
 REGION_PREFIX_MAP = {'us-east-1':'',
               'us-east-2':'USE2-',
               'us-west-1':'USW1-',
@@ -41,8 +41,8 @@ REGION_PREFIX_MAP = {'us-east-1':'',
               'ca-central-1':'CAN1-',
               'eu-west-1':'EU-',
               'eu-west-2':'EUW2-',
-              'eu-west-3':'EUW3',
-              'eu-north-1':'EUN1',
+              'eu-west-3':'EUW3-',
+              'eu-north-1':'EUN1-',
               'eu-central-1':'EUC1-',
               'ap-northeast-1':'APN1-',
               'ap-northeast-2':'APN2-',
@@ -59,6 +59,8 @@ REGION_PREFIX_MAP = {'us-east-1':'',
               'Canada (Central)':'CAN1-',
               'EU (Ireland)':'EU-',
               'EU (London)':'EUW2-',
+              'EU (Paris)':'EUW3-',
+              'EU (Stockholm)':'EUN1-',
               'EU (Frankfurt)':'EUC1-',
               'Asia Pacific (Tokyo)':'APN1-',
               'Asia Pacific (Seoul)':'APN2-',
@@ -117,8 +119,10 @@ SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-centr
 
 SUPPORTED_INSTANCE_TYPES = ('c1.medium', 'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge', 'c3.large', 'c3.xlarge',
                 'c4.2xlarge', 'c4.4xlarge', 'c4.8xlarge', 'c4.large', 'c4.xlarge', 'c5.18xlarge', 'c5.2xlarge',
-                'c5.4xlarge', 'c5.9xlarge', 'c5.large', 'c5.xlarge', 'c5d.18xlarge', 'c5d.2xlarge', 'c5d.4xlarge',
-                'c5d.9xlarge', 'c5d.large', 'c5d.xlarge', 'cc2.8xlarge', 'cg1.4xlarge', 'cr1.8xlarge', 'd2.2xlarge',
+                'c5.4xlarge', 'c5.9xlarge', 'c5.large', 'c5.xlarge',
+                'c5d.18xlarge', 'c5d.2xlarge', 'c5d.4xlarge', 'c5d.9xlarge', 'c5d.large', 'c5d.xlarge',
+                'c5n.18xlarge', 'c5n.9xlarge', 'c5n.4xlarge', 'c5n.2xlarge', 'c5n.xlarge', 'c5n.large',
+                'cc2.8xlarge', 'cg1.4xlarge', 'cr1.8xlarge', 'd2.2xlarge',
                 'd2.4xlarge', 'd2.8xlarge', 'd2.xlarge', 'f1.16xlarge', 'f1.2xlarge', 'g2.2xlarge', 'g2.8xlarge',
                 'g3.16xlarge', 'g3.4xlarge', 'g3.8xlarge', 'h1.16xlarge', 'h1.2xlarge', 'h1.4xlarge', 'h1.8xlarge',
                 'hs1.8xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge', 'i2.xlarge', 'i3.16xlarge', 'i3.2xlarge',
@@ -180,6 +184,20 @@ SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DA
                               PRODUCT_FAMILY_SNAPSHOT,PRODUCT_FAMILY_SERVERLESS,PRODUCT_FAMILY_DB_STORAGE,
                               PRODUCT_FAMILY_DB_PIOPS,PRODUCT_FAMILY_KINESIS_STREAMS)
 
+SUPPORTED_RESERVED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DATABASE_INSTANCE)
+
+SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {SERVICE_EC2:[PRODUCT_FAMILY_COMPUTE_INSTANCE,PRODUCT_FAMILY_DATA_TRANSFER, PRODUCT_FAMILY_FEE,
+                                                PRODUCT_FAMILY_STORAGE,PRODUCT_FAMILY_SYSTEM_OPERATION,PRODUCT_FAMILY_LOAD_BALANCER,
+                                                PRODUCT_FAMILY_APPLICATION_LOAD_BALANCER,PRODUCT_FAMILY_NETWORK_LOAD_BALANCER,
+                                                PRODUCT_FAMILY_SNAPSHOT],
+                                   SERVICE_RDS:[PRODUCT_FAMILY_DATABASE_INSTANCE, PRODUCT_FAMILY_DATA_TRANSFER,PRODUCT_FAMILY_FEE,
+                                                PRODUCT_FAMILY_DB_STORAGE,PRODUCT_FAMILY_DB_PIOPS,PRODUCT_FAMILY_SNAPSHOT ],
+                                   SERVICE_S3:[PRODUCT_FAMILY_STORAGE, PRODUCT_FAMILY_FEE,PRODUCT_FAMILY_API_REQUEST,PRODUCT_FAMILY_SYSTEM_OPERATION, PRODUCT_FAMILY_DATA_TRANSFER ],
+                                   SERVICE_LAMBDA:[PRODUCT_FAMILY_SERVERLESS, PRODUCT_FAMILY_DATA_TRANSFER, PRODUCT_FAMILY_FEE,
+                                                   PRODUCT_FAMILY_API_REQUEST],
+                                   SERVICE_KINESIS:[PRODUCT_FAMILY_KINESIS_STREAMS],
+                                   SERVICE_DYNAMODB:[PRODUCT_FAMILY_DB_STORAGE, PRODUCT_FAMILY_DB_PIOPS, PRODUCT_FAMILY_FEE ]
+                                   }
 
 
 INFINITY = 'Inf'

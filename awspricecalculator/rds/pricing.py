@@ -6,6 +6,9 @@ from ..common.models import PricingResult
 import tinydb
 
 log = logging.getLogger()
+regiondbs = {}
+indexMetadata = {}
+
 
 def calculate(pdim):
   ts = phelper.Timestamp()
@@ -13,15 +16,20 @@ def calculate(pdim):
   ts.start('tinyDbLoadOnDemand')
   ts.start('tinyDbLoadReserved')
 
+  global regiondbs
+  global indexMetadata
+
+
   log.info("Calculating RDS pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
   #Load On-Demand DBs
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(consts.SERVICE_RDS, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
   cost = 0
   pricing_records = []
 
   awsPriceListApiVersion = indexMetadata['Version']
   priceQuery = tinydb.Query()
+
 
 
   skuEngine = ''
@@ -43,7 +51,11 @@ def calculate(pdim):
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
     #Load On-Demand DBs
-    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+    dbs = regiondbs.get(consts.SERVICE_RDS+pdim.region+pdim.termType,{})
+    if not dbs:
+        dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(consts.SERVICE_RDS, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+        regiondbs[consts.SERVICE_RDS+pdim.region+pdim.termType]=dbs
+
     ts.finish('tinyDbLoadOnDemand')
     log.debug("Time to load OnDemand DB files: [{}]".format(ts.elapsed('tinyDbLoadOnDemand')))
 
@@ -126,11 +138,16 @@ def calculate(pdim):
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
     #Load Reserved DBs
-    indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
-                 'tenancies':[consts.EC2_TENANCY_SHARED], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
-    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
+    indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
+                 'tenancies':[consts.EC2_TENANCY_SHARED], 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
+
+    dbs = regiondbs.get(consts.SERVICE_RDS+pdim.region+pdim.termType,{})
+    if not dbs:
+        dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_RDS, phelper.get_partition_keys(consts.SERVICE_RDS, pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
+        regiondbs[consts.SERVICE_RDS+pdim.region+pdim.termType]=dbs
     ts.finish('tinyDbLoadReserved')
     log.debug("Time to load Reserved DB files: [{}]".format(ts.elapsed('tinyDbLoadReserved')))
+    log.debug("regiondbs keys:[{}]".format(regiondbs))
 
     #DB Instance
     #TODO: Confirm if convertible is supported (and add it, if that's the case)

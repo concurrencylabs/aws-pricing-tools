@@ -6,17 +6,24 @@ from ..common.models import PricingResult
 import tinydb
 
 log = logging.getLogger()
+regiondbs = {}
+indexMetadata = {}
 
 
 def calculate(pdim):
 
   log.info("Calculating DynamoDB pricing with the following inputs: {}".format(str(pdim.__dict__)))
+  global regiondbs
+  global indexMetadata
 
   ts = phelper.Timestamp()
   ts.start('totalCalculationDynamoDB')
 
   #Load On-Demand DBs
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_DYNAMODB, phelper.get_partition_keys(pdim.region,consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+  dbs = regiondbs.get(consts.SERVICE_DYNAMODB+pdim.region+pdim.termType,{})
+  if not dbs:
+    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_DYNAMODB, phelper.get_partition_keys(consts.SERVICE_DYNAMODB, pdim.region,consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+    regiondbs[consts.SERVICE_DYNAMODB+pdim.region+pdim.termType]=dbs
 
   cost = 0
   pricing_records = []

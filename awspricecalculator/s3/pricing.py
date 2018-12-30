@@ -7,14 +7,22 @@ import tinydb
 
 
 log = logging.getLogger()
+regiondbs = {}
+indexMetadata = {}
 
 def calculate(pdim):
   ts = phelper.Timestamp()
   ts.start('totalS3Calculation')
 
+  global regiondbs
+  global indexMetadata
+
   log.info("Calculating S3 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
-  dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_S3, phelper.get_partition_keys(pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+  dbs = regiondbs.get(consts.SERVICE_S3+pdim.region+pdim.termType,{})
+  if not dbs:
+    dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_S3, phelper.get_partition_keys(consts.SERVICE_S3, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
+    regiondbs[consts.SERVICE_S3+pdim.region+pdim.termType]=dbs
 
   cost = 0
   pricing_records = []
