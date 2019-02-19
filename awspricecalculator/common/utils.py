@@ -201,11 +201,6 @@ def compare(**kwargs):
         except NoDataFoundError:
           pass
 
-
-
-
-
-
   sorted_result = sorted(result)
   log.debug ("sorted_result: {}".format(sorted_result))
   if sorted_result: cheapest_price = sorted_result[0][0]
@@ -261,6 +256,9 @@ def compare(**kwargs):
 def compare_term_types(service, **kwargs):
   log.info("kwargs:[{}]".format(kwargs))
   years = kwargs['years']
+  regions = []
+  if kwargs.get('regions',[]): regions = kwargs['regions']
+  else: regions = [kwargs['region']]
   kwargs.pop('sortCriteria','')
   scenarioArray = []
   priceCalc = {}
@@ -273,46 +271,59 @@ def compare_term_types(service, **kwargs):
   termTypes = kwargs.get('termTypes',consts.SUPPORTED_TERM_TYPES)
   purchaseOptions = kwargs.get('purchaseOptions',consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
   offeringClasses = kwargs.get('offeringClasses',consts.SUPPORTED_EC2_OFFERING_CLASSES)
-  for t in termTypes:
-    i = 0
-    for oc in offeringClasses:
-      for p in purchaseOptions:
-        addFlag = False
-        kwargs['instanceHours'] = 365 * 24 * int(kwargs['instanceCount']) * int(years)
-        kwargs['termType']=t
+  for r in regions:
+    kwargs['region'] = r
+    for t in termTypes:
+      i = 0
+      for oc in offeringClasses:
+        for p in purchaseOptions:
+          addFlag = False
+          kwargs['instanceHours'] = 365 * 24 * int(kwargs['instanceCount']) * int(years)
+          kwargs['termType']=t
 
-        if t == consts.SCRIPT_TERM_TYPE_RESERVED:
-          calcKey = "{}-{}-{}-{}yr".format(t,oc,p,years)
-          kwargs['offeringType']=p
-          kwargs['offeringClass']=oc
-          if p == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT: kwargs.pop('instanceHours',0)
-          addFlag = True
-        if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND and i == 0:#only calculate price once for OnDemand
-          calcKey = "{}-{}yr".format(t,years)
-          kwargs['offeringType']=''
-          addFlag = True
-        i += 1
+          if t == consts.SCRIPT_TERM_TYPE_RESERVED:
+            if len(regions)>1: calcKey = "{}-{}-{}-{}-{}yr".format(r,t,oc,p,years)
+            else: calcKey = "{}-{}-{}-{}yr".format(t,oc,p,years)
+            kwargs['offeringType']=p
+            kwargs['offeringClass']=oc
+            if p == consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT: kwargs.pop('instanceHours',0)
+            addFlag = True
+          if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND and i == 0:#only calculate price once for OnDemand
+            if len(regions)>1: calcKey = "{}-{}-{}yr".format(r,t,years)
+            else: calcKey = "{}-{}yr".format(t,years)
+            kwargs['offeringType']=''
+            addFlag = True
+          i += 1
+          try:
+            #This flag ensures there are no duplicate OnDemand entries
+            pdims = {}
+            priceCalc = {}
+            if addFlag:
+              if service == consts.SERVICE_EC2:
+                pdims = models.Ec2PriceDimension(**kwargs)
+                pdims.region=r
+                priceCalc = ec2pricing.calculate(pdims)
+              elif service == consts.SERVICE_RDS:
+                pdims = models.RdsPriceDimension(**kwargs)
+                pdims.region=r
+                priceCalc = rdspricing.calculate(pdims)
+              log.info("priceCalc: {}".format(json.dumps(priceCalc, indent=4)))
+              #pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
+              if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND: onDemandTotal = priceCalc['totalCost']
+              pricingScenario = models.TermPricingScenario(calcKey, pdims.__dict__, priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
+              scenarioArray.append([pricingScenario.totalCost,pricingScenario])
 
-        #This flag ensures there are no duplicate OnDemand entries
-        pdims = {}
-        if addFlag:
-          if service == consts.SERVICE_EC2:
-            pdims = models.Ec2PriceDimension(**kwargs)
-            priceCalc = ec2pricing.calculate(pdims)
-          elif service == consts.SERVICE_RDS:
-            pdims = models.RdsPriceDimension(**kwargs)
-            priceCalc = rdspricing.calculate(pdims)
-          log.info("priceCalc: {}".format(json.dumps(priceCalc, indent=4)))
-          #pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
-          pricingScenario = models.TermPricingScenario(calcKey, pdims.__dict__, priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
-          scenarioArray.append([pricingScenario.totalCost,pricingScenario])
-          if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND: onDemandTotal = priceCalc['totalCost']
-          awsPriceListApiVersion = priceCalc['awsPriceListApiVersion']
+              awsPriceListApiVersion = priceCalc['awsPriceListApiVersion']
 
+          except NoDataFoundError as ndf:
+            log.debug ("NoDataFoundError pdims:[{}]".format(pdims))
+
+
+  if len(scenarioArray)==0: raise NoDataFoundError("NoDataFoundeError for term type comparison [{}]: [{}]".format(kwargs))
   sortedPricingScenarios = calculate_sorted_results(scenarioArray)
   #print "calculation results:[{}]".format(json.dumps(sortedPricingScenarios, indent=4))
 
-  pricingAnalysis = models.TermPricingAnalysis(awsPriceListApiVersion, kwargs['region'], service, years)
+  pricingAnalysis = models.TermPricingAnalysis(awsPriceListApiVersion, regions, service, years)
   pricingAnalysis.pricingScenarios = sortedPricingScenarios
   #TODO: move the next 3 calls to a single method
   pricingAnalysis.calculate_months_to_recover()

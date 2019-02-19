@@ -7,6 +7,7 @@ import csv, json
 from models import PricingRecord, PricingResult
 from errors import NoDataFoundError
 
+
 log = logging.getLogger()
 log.setLevel(consts.LOG_LEVEL)
 
@@ -90,6 +91,7 @@ def buildSkuTable(evaluated_sku_desc):
 Calculates the keys that will be used to partition big index files into smaller pieces.
 If no term is specified, the function will consider On-Demand and Reserved
 """
+#TODO: merge all 3 load balancers into a single file (to speed up DB file loading and number of open files
 def get_partition_keys(service, region, term, **extraArgs):
     result = []
     if region:
@@ -160,20 +162,27 @@ def loadDBs(service, indexFiles):
           with open(datadir+i+'.csv', 'rb') as csvfile:
               pricelist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
               db.insert_multiple(pricelist)
+          #csvfile.close()#avoid " [Errno 24] Too many open files" exception
         except IOError:
           pass
       dBs[i]=db
+      #db.close()#avoid " [Errno 24] Too many open files" exception
+
 
     return dBs, indexMetadata
 
 
 
 def getIndexMetadata(service):
+  ts = Timestamp()
+  ts.start('getIndexMetadata')
   result = {}
   #datadir = get_data_directory(service)
   with open(get_data_directory(service)+"index_metadata.json") as index_metadata:
     result = json.load(index_metadata)
-
+  index_metadata.close()
+  ts.finish('getIndexMetadata')
+  log.debug("Time to load indexMetadata: [{}]".format(ts.elapsed('getIndexMetadata')))
   return result
 
 

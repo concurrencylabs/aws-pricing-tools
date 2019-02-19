@@ -114,7 +114,7 @@ SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERV
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2',
-                     'sa-east-1','ap-south-1','cn-northwest-1', 'eu-west-3', 'eu-north-1'
+                     'sa-east-1','ap-south-1', 'eu-west-3', 'eu-north-1'
                      )
 
 SUPPORTED_INSTANCE_TYPES = ('c1.medium', 'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge', 'c3.large', 'c3.xlarge',
@@ -214,6 +214,7 @@ SORT_CRITERIA_S3_STORAGE_CLASS_DATA_RETRIEVAL_GB = 'storage-class-data-retrieval
 SORT_CRITERIA_TO_REGION = 'to-region'
 SORT_CRITERIA_LAMBDA_MEMORY = 'memory'
 SORT_CRITERIA_TERM_TYPE = 'term-type'
+SORT_CRITERIA_TERM_TYPE_REGION = 'term-type-region'
 
 
 SORT_CRITERIA_VALUE_SEPARATOR = ','

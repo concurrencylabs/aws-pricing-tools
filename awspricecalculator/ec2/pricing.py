@@ -3,7 +3,7 @@ import json
 import logging
 from ..common import consts, phelper
 from ..common.models import PricingResult
-
+#import psutil
 import tinydb
 
 log = logging.getLogger()
@@ -31,10 +31,12 @@ def calculate(pdim):
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
     #Load On-Demand DBs
-    dbs = regiondbs.get(consts.SERVICE_EC2+pdim.region+pdim.termType,{})
+    indexArgs = {'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]]}
+    tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType+pdim.tenancy
+    dbs = regiondbs.get(tmpDbKey,{})
     if not dbs:
-      dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
-      regiondbs[consts.SERVICE_EC2+pdim.region+pdim.termType]=dbs
+      dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND, **indexArgs))
+      regiondbs[tmpDbKey]=dbs
 
     ts.finish('tinyDbLoadOnDemand')
     log.debug("Time to load OnDemand DB files: [{}]".format(ts.elapsed('tinyDbLoadOnDemand')))
@@ -135,16 +137,19 @@ def calculate(pdim):
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
   #Load Reserved DBs
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
-    #indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
-    #             'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
+    indexArgs = {'offeringClasses':[consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]],
+                 'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]], 'purchaseOptions':[consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]]}
     #Load all values for offeringClasses, tenancies and purchaseOptions
-    indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
-                 'tenancies':consts.EC2_TENANCY_MAP.values(), 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
-    #TODO: load Reserved DBs in an even more granular way (by purchase options and tenancy based on input pdims
-    dbs = regiondbs.get(consts.SERVICE_EC2+pdim.region+pdim.termType,{})
+    #indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
+    #             'tenancies':consts.EC2_TENANCY_MAP.values(), 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
+    tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType+pdim.offeringClass+pdim.tenancy+pdim.offeringType
+    #tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType
+    dbs = regiondbs.get(tmpDbKey,{})
     if not dbs:
       dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_RESERVED, **indexArgs))
-      regiondbs[consts.SERVICE_EC2+pdim.region+pdim.termType]=dbs
+      #regiondbs[consts.SERVICE_EC2+pdim.region+pdim.termType]=dbs
+      regiondbs[tmpDbKey]=dbs
+
     log.debug("dbs keys:{}".format(dbs.keys()))
 
     ts.finish('tinyDbLoadReserved')
@@ -179,10 +184,13 @@ def calculate(pdim):
     log.debug("Time to search:[{}]".format(ts.finish('tinyDbSearchComputeFileReserved')))
 
 
-
+  log.debug("regiondbs:[{}]".format(regiondbs.keys()))
   awsPriceListApiVersion = indexMetadata['Version']
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
+
+  #proc = psutil.Process()
+  #log.debug("open_files: {}".format(proc.open_files()))
 
   log.debug("Total time: [{}]".format(ts.finish('totalCalculation')))
   return pricing_result.__dict__
