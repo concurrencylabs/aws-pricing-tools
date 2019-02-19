@@ -23,11 +23,12 @@ def main(argv):
   service = ''
   format = ''
   region = ''
+  tenancy = ''
 
   help_message = 'Script usage: \nget-latest-index.py --service=<s3|ec2|rds|etc> --format=<csv|json>'
 
   try:
-    opts, args = getopt.getopt(argv,"hr:s:f:",["region=","service=","format="])
+    opts, args = getopt.getopt(argv,"hr:s:f:t",["region=","service=","format=","tenancy="])
     print ('opts: ' + str(opts))
   except getopt.GetoptError:
     print (help_message)
@@ -43,6 +44,8 @@ def main(argv):
       format = opt[1]
     if opt[0] in ("-r","--region"):
       region = opt[1]
+    if opt[0] in ("-t","--tenancy"): #comma-separated tenancies (host, dedicated, shared)
+      tenancy= opt[1].split(',')
 
 
   if not format: format = 'csv'
@@ -63,6 +66,11 @@ def main(argv):
   if service == 'all': services = SUPPORTED_SERVICES
   else: services = [service]
 
+  term  = '' #all terms
+
+  extraArgs = {}
+  if tenancy: extraArgs['tenancies']=[tenancy]
+
   for s in services:
       if s != 'all':
           offerIndexUrl = OFFER_INDEX_URL.replace('{serviceIndex}',consts.SERVICE_INDEX_MAP[s]) + format
@@ -78,7 +86,7 @@ def main(argv):
 
           if format == 'csv':
             remove_metadata(filename)
-            split_index(s, region)
+            split_index(s, region, term, **extraArgs)
 
 
 """
@@ -119,12 +127,12 @@ queried. This increases performance significantly.
 
 """
 
-def split_index(service, region):
+def split_index(service, region, term, **args):
     #Split index format: region -> term type -> product family
     indexDict = {}#contains the keys of the files that will be created
     productFamilies = {}
     usageGroupings=[]
-    partition_keys = phelper.get_partition_keys(service, region,'')#All regions and all term types (On-Demand + Reserved)
+    partition_keys = phelper.get_partition_keys(service, region, term, **args)#All regions and all term types (On-Demand + Reserved)
     for pk in partition_keys:
         indexDict[pk]=[]
 
