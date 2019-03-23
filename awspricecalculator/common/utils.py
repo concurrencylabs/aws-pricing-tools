@@ -319,7 +319,7 @@ def compare_term_types(service, **kwargs):
             log.debug ("NoDataFoundError pdims:[{}]".format(pdims))
 
 
-  if len(scenarioArray)==0: raise NoDataFoundError("NoDataFoundeError for term type comparison [{}]: [{}]".format(kwargs))
+  if len(scenarioArray)==0: raise NoDataFoundError("NoDataFoundeError for term type comparison: [{}]".format(kwargs))
   sortedPricingScenarios = calculate_sorted_results(scenarioArray)
   #print "calculation results:[{}]".format(json.dumps(sortedPricingScenarios, indent=4))
 

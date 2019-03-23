@@ -186,8 +186,17 @@ class RdsPriceDimension():
 
       self.licenseModel = kargs.get('licenseModel')
       if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_MYSQL,consts.SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL,
-                         consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL):
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL, consts.SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL,
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_MARIADB):
           self.licenseModel = consts.SCRIPT_RDS_LICENSE_MODEL_PUBLIC
+      if self.engine in (consts.SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD, consts.SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE,
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB, consts.SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS,
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_ORACLE_ENTERPRISE, consts.SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD,
+                         consts.SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_ONE, consts.SCRIPT_RDS_DATABASE_ENGINE_ORACLE_STANDARD_TWO) \
+                    and not self.licenseModel:
+          self.licenseModel = consts.SCRIPT_RDS_LICENSE_MODEL_INCLUDED
+
+
 
       self.instanceHours = int(kargs.get('instanceHours',0))
 
