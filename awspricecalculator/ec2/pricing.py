@@ -28,11 +28,20 @@ def calculate(pdim):
   global regiondbs
   global indexMetadata
 
+
+  #DBs for Data Transfer
+  tmpDtDbKey = consts.SERVICE_DATA_TRANSFER+pdim.region+pdim.termType
+  dtdbs = regiondbs.get(tmpDtDbKey,{})
+  if not dtdbs:
+    dtdbs, dtIndexMetadata = phelper.loadDBs(consts.SERVICE_DATA_TRANSFER, phelper.get_partition_keys(consts.SERVICE_DATA_TRANSFER, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND, **{}))
+    regiondbs[tmpDtDbKey]=dtdbs
+
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
     #Load On-Demand DBs
     indexArgs = {'tenancies':[consts.EC2_TENANCY_MAP[pdim.tenancy]]}
     tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType+pdim.tenancy
+
     dbs = regiondbs.get(tmpDbKey,{})
     if not dbs:
       dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_EC2, phelper.get_partition_keys(consts.SERVICE_EC2, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND, **indexArgs))
@@ -61,24 +70,26 @@ def calculate(pdim):
 
 
     #Data Transfer
-    dataTransferDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
+    dataTransferDb = dtdbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
 
     #Out to the Internet
     if pdim.dataTransferOutInternetGb:
       ts.start('searchDataTransfer')
       query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
-      log.debug("Time to search EC2 data transfer Out: [{}]".format(ts.finish('searchDataTransfer')))
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
+      log.debug("Time to search AWS Data Transfer Out: [{}]".format(ts.finish('searchDataTransfer')))
 
     #Intra-regional data transfer - in/out/between EC2 AZs or using EIPs or ELB
     if pdim.dataTransferOutIntraRegionGb:
       query = ((priceQuery['Transfer Type'] == 'IntraRegion'))
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutIntraRegionGb, pricing_records, cost)
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutIntraRegionGb, pricing_records, cost)
+
 
     #Inter-regional data transfer - out to other AWS regions
     if pdim.dataTransferOutInterRegionGb:
       query = ((priceQuery['Transfer Type'] == 'InterRegion Outbound') & (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]))
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_EC2, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
+
 
     #EBS Storage
     if pdim.ebsStorageGbMonth:

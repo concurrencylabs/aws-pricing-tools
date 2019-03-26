@@ -105,6 +105,7 @@ SERVICE_RDS = 'rds'
 SERVICE_LAMBDA = 'lambda'
 SERVICE_DYNAMODB= 'dynamodb'
 SERVICE_KINESIS = 'kinesis'
+SERVICE_DATA_TRANSFER = 'datatransfer'
 SERVICE_ALL = 'all'
 
 NOT_APPLICABLE = 'NA'
@@ -144,7 +145,8 @@ SUPPORTED_INSTANCE_TYPES = ('c1.medium', 'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge'
                 'x1e.4xlarge', 'x1e.8xlarge', 'x1e.xlarge')
 
 SERVICE_INDEX_MAP = {SERVICE_S3:'AmazonS3', SERVICE_EC2:'AmazonEC2', SERVICE_RDS:'AmazonRDS',
-                     SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB', SERVICE_KINESIS:'AmazonKinesis'}
+                     SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB', SERVICE_KINESIS:'AmazonKinesis',
+                     SERVICE_DATA_TRANSFER:'AWSDataTransfer'}
 
 
 SCRIPT_TERM_TYPE_ON_DEMAND = 'on-demand'
@@ -196,7 +198,8 @@ SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {SERVICE_EC2:[PRODUCT_FAMILY_COMPUT
                                    SERVICE_LAMBDA:[PRODUCT_FAMILY_SERVERLESS, PRODUCT_FAMILY_DATA_TRANSFER, PRODUCT_FAMILY_FEE,
                                                    PRODUCT_FAMILY_API_REQUEST],
                                    SERVICE_KINESIS:[PRODUCT_FAMILY_KINESIS_STREAMS],
-                                   SERVICE_DYNAMODB:[PRODUCT_FAMILY_DB_STORAGE, PRODUCT_FAMILY_DB_PIOPS, PRODUCT_FAMILY_FEE ]
+                                   SERVICE_DYNAMODB:[PRODUCT_FAMILY_DB_STORAGE, PRODUCT_FAMILY_DB_PIOPS, PRODUCT_FAMILY_FEE ],
+                                   SERVICE_DATA_TRANSFER:[PRODUCT_FAMILY_DATA_TRANSFER]
                                    }
 
 

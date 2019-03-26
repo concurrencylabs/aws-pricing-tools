@@ -47,6 +47,13 @@ def calculate(pdim):
   #if 'sqlserver' in pdim.engine and pdim.deploymentOption == consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ:
   #  deploymentOptionCondition = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ_MIRROR
 
+  #DBs for Data Transfer
+  tmpDtDbKey = consts.SERVICE_DATA_TRANSFER+pdim.region+pdim.termType
+  dtdbs = regiondbs.get(tmpDtDbKey,{})
+  if not dtdbs:
+    dtdbs, dtIndexMetadata = phelper.loadDBs(consts.SERVICE_DATA_TRANSFER, phelper.get_partition_keys(consts.SERVICE_DATA_TRANSFER, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND, **{}))
+    regiondbs[tmpDtDbKey]=dtdbs
+
 
   #_/_/_/_/_/ ON-DEMAND PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_ON_DEMAND:
@@ -79,22 +86,22 @@ def calculate(pdim):
     #Data Transfer
     #To internet
     if pdim.dataTransferOutInternetGb:
-      dataTransferDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER])]
+      dataTransferDb = dtdbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
       query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
               (priceQuery['To Location'] == 'External') &
               (priceQuery['Transfer Type'] == 'AWS Outbound'))
 
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
 
 
     #Inter-regional data transfer - to other AWS regions
     if pdim.dataTransferOutInterRegionGb:
-      dataTransferDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER])]
+      dataTransferDb = dtdbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
       query = ((priceQuery['serviceCode'] == consts.SERVICE_CODE_AWS_DATA_TRANSFER) &
               (priceQuery['To Location'] == consts.REGION_MAP[pdim.toRegion]) &
               (priceQuery['Transfer Type'] == 'InterRegion Outbound'))
 
-      pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
+      pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
     #Storage (magnetic, SSD, PIOPS)
     if pdim.storageGbMonth:

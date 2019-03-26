@@ -16,7 +16,7 @@ This script gets the latest index files from the AWS Price List API.
 def main(argv):
 
   SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA,
-                        consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_ALL)
+                        consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_DATA_TRANSFER, consts.SERVICE_ALL)
   SUPPORTED_FORMATS = ('json','csv')
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
   
@@ -173,7 +173,7 @@ def split_index(service, region, term, **args):
             productFamily = row['Product Family']
             if productFamily not in productFamilies:
                 productFamilies[productFamily] = []
-            usageGroup = row['Group']
+            usageGroup = row.get('Group','')
             if usageGroup not in productFamilies[productFamily]:
                 productFamilies[productFamily].append(usageGroup)
 

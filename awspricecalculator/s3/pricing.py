@@ -19,6 +19,14 @@ def calculate(pdim):
 
   log.info("Calculating S3 pricing with the following inputs: {}".format(str(pdim.__dict__)))
 
+  #DBs for Data Transfer
+  tmpDtDbKey = consts.SERVICE_DATA_TRANSFER+pdim.region+pdim.termType
+  dtdbs = regiondbs.get(tmpDtDbKey,{})
+  if not dtdbs:
+    dtdbs, dtIndexMetadata = phelper.loadDBs(consts.SERVICE_DATA_TRANSFER, phelper.get_partition_keys(consts.SERVICE_DATA_TRANSFER, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND, **{}))
+    regiondbs[tmpDtDbKey]=dtdbs
+
+  #DBs for S3 Pricing
   dbs = regiondbs.get(consts.SERVICE_S3+pdim.region+pdim.termType,{})
   if not dbs:
     dbs, indexMetadata = phelper.loadDBs(consts.SERVICE_S3, phelper.get_partition_keys(consts.SERVICE_S3, pdim.region, consts.SCRIPT_TERM_TYPE_ON_DEMAND))
@@ -34,23 +42,19 @@ def calculate(pdim):
   #Storage
   if pdim.storageSizeGb:
     storageDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_STORAGE])]
-    #query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]) & (priceQuery['usageType'] == consts.S3_USAGE_TYPE_DICT[pdim.storageClass]))
     query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]) & (priceQuery['Volume Type'] == consts.S3_VOLUME_TYPE_DICT[pdim.storageClass]))
-    #query = ((priceQuery['usageType'] == consts.S3_USAGE_TYPE_DICT[pdim.storageClass]))
-    #query = ((priceQuery['Storage Class'] == consts.S3_STORAGE_CLASS_MAP[pdim.storageClass]))
-    #print("consts.S3_USAGE_TYPE_DICT[pdim.storageClass]:[{}]".format(consts.S3_USAGE_TYPE_DICT[pdim.storageClass]))
-    #print("consts.S3_VOLUME_TYPE_DICT[pdim.storageClass]:[{}]".format(consts.S3_VOLUME_TYPE_DICT[pdim.storageClass]))
-    #query = ((priceQuery['Volume Type'] == consts.S3_VOLUME_TYPE_DICT[pdim.storageClass]))
 
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_S3, storageDb, query, pdim.storageSizeGb, pricing_records, cost)
 
+
   #Data Transfer
+
   if pdim.dataTransferOutInternetGb:
-    transferDb = dbs[phelper.create_file_key([consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER])]
+    dataTransferDb = dtdbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_DATA_TRANSFER))]
 
     #Out to the internet
     query = ((priceQuery['To Location'] == 'External') & (priceQuery['Transfer Type'] == 'AWS Outbound'))
-    pricing_records, cost = phelper.calculate_price(consts.SERVICE_S3, transferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
+    pricing_records, cost = phelper.calculate_price(consts.SERVICE_DATA_TRANSFER, dataTransferDb, query, pdim.dataTransferOutInternetGb, pricing_records, cost)
     #TODO: Intra region (regular and accelerated)
     #TODO: Out to the internet (Accelerated transfer)
 
