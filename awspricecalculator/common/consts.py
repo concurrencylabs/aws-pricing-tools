@@ -30,7 +30,8 @@ REGION_MAP = {'us-east-1':'US East (N. Virginia)',
               'ap-southeast-2':'Asia Pacific (Sydney)',
               'sa-east-1':'South America (Sao Paulo)',
               'ap-south-1':'Asia Pacific (Mumbai)',
-              'cn-northwest-1':'China (Ningxia)'
+              'cn-northwest-1':'China (Ningxia)',
+              'ap-east-1':'Asia Pacific (Hong Kong)'
               }
 
 #TODO: update for China region
@@ -44,6 +45,7 @@ REGION_PREFIX_MAP = {'us-east-1':'',
               'eu-west-3':'EUW3-',
               'eu-north-1':'EUN1-',
               'eu-central-1':'EUC1-',
+              'ap-east-1':'APE1-' ,
               'ap-northeast-1':'APN1-',
               'ap-northeast-2':'APN2-',
               'ap-northeast-3':'APN3-',
@@ -84,6 +86,7 @@ REGION_REPORT_MAP = {'us-east-1':'N. Virginia',
               'eu-west-2':'London',
               'eu-north-1':'Stockholm',
               'eu-central-1':'Frankfurt',
+              'ap-east-1':'Hong Kong',
               'ap-northeast-1':'Tokyo',
               'ap-northeast-2':'Seoul',
               'ap-northeast-3':'Osaka',
@@ -114,7 +117,7 @@ NOT_APPLICABLE = 'NA'
 SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERVICE_DYNAMODB, SERVICE_KINESIS)
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
-                     'eu-central-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2',
+                     'eu-central-1', 'ap-east-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1', 'eu-west-3', 'eu-north-1'
                      )
 
@@ -382,6 +385,7 @@ SUPPORTED_RDS_INSTANCE_CLASSES = ('db.t1.micro', 'db.m1.small', 'db.m1.medium', 
                 'db.r4.large', 'db.r4.xlarge', 'db.r4.2xlarge', 'db.r4.4xlarge', 'db.r4.8xlarge', 'db.r4.16xlarge',
                 'db.r5.large', 'db.r5.xlarge', 'db.r5.2xlarge', 'db.r5.4xlarge', 'db.r5.12xlarge', 'db.r5.24xlarge',
                 'db.t2.micro', 'db.t2.small', 'db.t2.2xlarge', 'db.t2.large', 'db.t2.xlarge', 'db.t2.medium',
+                'db.t3.micro', 'db.t3.small', 'db.t3.medium', 'db.t3.large', 'db.t3.xlarge', 'db.t3.2xlarge',
                 'db.x1.16xlarge', 'db.x1.32xlarge', 'db.x1e.16xlarge', 'db.x1e.2xlarge', 'db.x1e.32xlarge', 'db.x1e.4xlarge', 'db.x1e.8xlarge', 'db.x1e.xlarge'
                 )
 
@@ -441,7 +445,7 @@ SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_ENTERPRISE = 'sqlserver-ee'
 SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_STANDARD = 'sqlserver-se'
 SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_EXPRESS = 'sqlserver-ex'
 SCRIPT_RDS_DATABASE_ENGINE_SQL_SERVER_WEB = 'sqlserver-web'
-SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL = 'postgres'
+SCRIPT_RDS_DATABASE_ENGINE_POSTGRESQL = 'postgres'  #to be consistent with RDS API - https://docs.aws.amazon.com/AmazonRDS/latest/APIReference/API_CreateDBInstance.html
 SCRIPT_RDS_DATABASE_ENGINE_AURORA_MYSQL = 'aurora'
 SCRIPT_RDS_DATABASE_ENGINE_AURORA_POSTGRESQL = 'aurora-postgresql'
 

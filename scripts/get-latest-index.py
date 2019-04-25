@@ -19,7 +19,8 @@ def main(argv):
                         consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_DATA_TRANSFER, consts.SERVICE_ALL)
   SUPPORTED_FORMATS = ('json','csv')
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
-  
+
+
   service = ''
   format = ''
   region = ''
@@ -167,7 +168,7 @@ def split_index(service, region, term, **args):
 
             indexKey = phelper.create_file_key(indexDimensions)
             if indexKey in indexDict:
-                indexDict[indexKey].append(row)
+                indexDict[indexKey].append(remove_fields(service, row))
 
             #Get a list of distinct product families in the index file
             productFamily = row['Product Family']
@@ -204,6 +205,22 @@ def get_index_file_name(service, name, format):
   return result
 
 
+"""
+This method removes unnecessary fields from each row in the index file. This is necessary since large index files
+become a problem when they're too large and result in Lambda functions exceeding package size or in slower warm-up
+times for Lambda.
+"""
+
+def remove_fields(service, row):
+    EXCLUDE_FIELD_DICT = {
+          consts.SERVICE_EC2:['Location Type', 'Processor Features', 'serviceName', 'Network Performance',
+                              'Instance Family', 'Current Generation']
+                  }
+
+    for f in EXCLUDE_FIELD_DICT.get(service, []):
+        row.pop(f,'')
+
+    return row
 
 
 
