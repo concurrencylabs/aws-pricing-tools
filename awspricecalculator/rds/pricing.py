@@ -145,6 +145,7 @@ def calculate(pdim):
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
     #Load Reserved DBs
+
     indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
                  'tenancies':[consts.EC2_TENANCY_SHARED], 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
 
@@ -157,7 +158,7 @@ def calculate(pdim):
     log.debug("regiondbs keys:[{}]".format(regiondbs))
 
     #DB Instance
-    #TODO: Confirm if convertible is supported (and add it, if that's the case)
+    #RDS only supports standard
     instanceDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType],
                                              consts.PRODUCT_FAMILY_DATABASE_INSTANCE, consts.EC2_OFFERING_CLASS_STANDARD,
                                              consts.EC2_TENANCY_SHARED, consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]))]

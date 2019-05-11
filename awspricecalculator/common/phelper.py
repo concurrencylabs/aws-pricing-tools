@@ -1,11 +1,11 @@
 
-import consts
+from . import consts
 import os, sys
 import datetime
 import logging
 import csv, json
-from models import PricingRecord, PricingResult
-from errors import NoDataFoundError
+from .models import PricingRecord, PricingResult
+from .errors import NoDataFoundError
 
 
 log = logging.getLogger()
@@ -124,7 +124,7 @@ def get_partition_keys(service, region, term, **extraArgs):
                                   result.append(create_file_key((r,t,pf,oc,ten, po)))
                 else:
                     #OnDemand EC2 Instances use Tenancy as a dimension for index creation
-                    if pf == consts.PRODUCT_FAMILY_COMPUTE_INSTANCE:
+                    if service == consts.SERVICE_EC2 and  pf == consts.PRODUCT_FAMILY_COMPUTE_INSTANCE:
                         for ten in tenancies:
                             result.append(create_file_key((r,t,pf,ten)))
                     else:
@@ -159,7 +159,8 @@ def loadDBs(service, indexFiles):
       #TODO:Create a file that is an index of those files that have been generated, so the code knows which files to look for and avoid creating unnecesary empty .json files
       if len(db) == 0:
         try:
-          with open(datadir+i+'.csv', 'rb') as csvfile:
+          #with open(datadir+i+'.csv', 'rb') as csvfile:
+          with open(datadir+i+'.csv', 'r') as csvfile:
               pricelist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
               db.insert_multiple(pricelist)
           #csvfile.close()#avoid " [Errno 24] Too many open files" exception

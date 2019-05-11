@@ -98,7 +98,7 @@ def calculate(pdim):
   pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
-  print "Total time to compute S3 pricing: [{}]".format(ts.finish('totalS3Calculation'))
+  print ("Total time to compute S3 pricing: [{}]".format(ts.finish('totalS3Calculation')))
   return pricing_result.__dict__
 
 

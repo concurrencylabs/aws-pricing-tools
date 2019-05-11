@@ -109,46 +109,83 @@ SERVICE_LAMBDA = 'lambda'
 SERVICE_DYNAMODB= 'dynamodb'
 SERVICE_KINESIS = 'kinesis'
 SERVICE_DATA_TRANSFER = 'datatransfer'
+SERVICE_EMR = 'emr'
+SERVICE_REDSHIFT = 'redshift'
 SERVICE_ALL = 'all'
 
 NOT_APPLICABLE = 'NA'
 
 
-SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERVICE_DYNAMODB, SERVICE_KINESIS)
+SUPPORTED_SERVICES = (SERVICE_S3, SERVICE_EC2, SERVICE_RDS, SERVICE_LAMBDA, SERVICE_DYNAMODB, SERVICE_KINESIS,
+                      SERVICE_EMR, SERVICE_REDSHIFT)
 
 SUPPORTED_REGIONS = ('us-east-1','us-east-2', 'us-west-1', 'us-west-2','ca-central-1', 'eu-west-1','eu-west-2',
                      'eu-central-1', 'ap-east-1', 'ap-northeast-1', 'ap-northeast-2', 'ap-northeast-3', 'ap-southeast-1', 'ap-southeast-2',
                      'sa-east-1','ap-south-1', 'eu-west-3', 'eu-north-1'
                      )
 
-SUPPORTED_INSTANCE_TYPES = ('c1.medium', 'c1.xlarge', 'c3.2xlarge', 'c3.4xlarge', 'c3.8xlarge', 'c3.large', 'c3.xlarge',
-                'c4.2xlarge', 'c4.4xlarge', 'c4.8xlarge', 'c4.large', 'c4.xlarge', 'c5.18xlarge', 'c5.2xlarge',
-                'c5.4xlarge', 'c5.9xlarge', 'c5.large', 'c5.xlarge',
-                'c5d.18xlarge', 'c5d.2xlarge', 'c5d.4xlarge', 'c5d.9xlarge', 'c5d.large', 'c5d.xlarge',
-                'c5n.18xlarge', 'c5n.9xlarge', 'c5n.4xlarge', 'c5n.2xlarge', 'c5n.xlarge', 'c5n.large',
-                'cc2.8xlarge', 'cg1.4xlarge', 'cr1.8xlarge', 'd2.2xlarge',
-                'd2.4xlarge', 'd2.8xlarge', 'd2.xlarge', 'f1.16xlarge', 'f1.2xlarge', 'g2.2xlarge', 'g2.8xlarge',
-                'g3.16xlarge', 'g3.4xlarge', 'g3.8xlarge', 'h1.16xlarge', 'h1.2xlarge', 'h1.4xlarge', 'h1.8xlarge',
-                'hs1.8xlarge', 'i2.2xlarge', 'i2.4xlarge', 'i2.8xlarge', 'i2.xlarge', 'i3.16xlarge', 'i3.2xlarge',
-                'i3.4xlarge', 'i3.8xlarge', 'i3.large', 'i3.xlarge', 'm1.large', 'm1.medium', 'm1.small', 'm1.xlarge',
-                'm2.2xlarge', 'm2.4xlarge', 'm2.xlarge', 'm3.2xlarge', 'm3.large', 'm3.medium', 'm3.xlarge',
-                'm4.10xlarge', 'm4.16xlarge', 'm4.2xlarge', 'm4.4xlarge', 'm4.large', 'm4.xlarge',
-                'm5.large', 'm5.xlarge', 'm5.2xlarge', 'm5.4xlarge', 'm5.12xlarge', 'm5.24xlarge',
-                'm5d.large', 'm5d.xlarge', 'm5d.2xlarge', 'm5d.4xlarge', 'm5d.12xlarge', 'm5d.24xlarge',
-                'p2.16xlarge', 'p2.8xlarge', 'p2.xlarge', 'p3.16xlarge', 'p3.2xlarge', 'p3.8xlarge',
-                'r3.2xlarge', 'r3.4xlarge', 'r3.8xlarge', 'r3.large', 'r3.xlarge',
-                'r4.16xlarge', 'r4.2xlarge', 'r4.4xlarge', 'r4.8xlarge', 'r4.large','r4.xlarge',
-                'r5.large', 'r5.xlarge', 'r5.2xlarge', 'r5.4xlarge', 'r5.12xlarge', 'r5.24xlarge',
-                'r5d.large', 'r5d.xlarge', 'r5d.2xlarge', 'r5d.4xlarge', 'r5d.12xlarge', 'r5d.24xlarge',
-                'r5a.large', 'r5a.xlarge', 'r5a.2xlarge', 'r5a.4xlarge', 'r5a.12xlarge', 'r5a.24xlarge',
-                't1.micro',
-                't2.nano', 't2.micro', 't2.small', 't2.medium', 't2.large', 't2.xlarge', 't2.2xlarge',
-                't3.nano', 't3.micro', 't3.small', 't3.medium', 't3.large', 't3.xlarge', 't3.2xlarge',
-                'x1.16xlarge', 'x1.32xlarge', 'x1e.16xlarge', 'x1e.2xlarge', 'x1e.32xlarge',
-                'x1e.4xlarge', 'x1e.8xlarge', 'x1e.xlarge')
+SUPPORTED_EC2_INSTANCE_TYPES = ('a1.2xlarge','a1.4xlarge','a1.large','a1.medium','a1.xlarge','c1.medium','c1.xlarge','c3.2xlarge',
+                        'c3.4xlarge','c3.8xlarge','c3.large','c3.xlarge','c4.2xlarge','c4.4xlarge','c4.8xlarge','c4.large',
+                        'c4.xlarge','c5.18xlarge','c5.2xlarge','c5.4xlarge','c5.9xlarge','c5.large','c5.xlarge','c5d.18xlarge',
+                        'c5d.2xlarge','c5d.4xlarge','c5d.9xlarge','c5d.large','c5d.xlarge','c5n.18xlarge','c5n.2xlarge',
+                        'c5n.4xlarge','c5n.9xlarge','c5n.large','c5n.xlarge','cc2.8xlarge','cr1.8xlarge','d2.2xlarge',
+                        'd2.4xlarge','d2.8xlarge','d2.xlarge','f1.16xlarge','f1.2xlarge','f1.4xlarge','g2.2xlarge',
+                        'g2.8xlarge','g3.16xlarge','g3.4xlarge','g3.8xlarge','g3s.xlarge','h1.16xlarge','h1.2xlarge',
+                        'h1.4xlarge','h1.8xlarge','hs1.8xlarge','i2.2xlarge','i2.4xlarge','i2.8xlarge','i2.xlarge',
+                        'i3.16xlarge','i3.2xlarge','i3.4xlarge','i3.8xlarge','i3.large','i3.xlarge','m1.large',
+                        'm1.medium','m1.small','m1.xlarge','m2.2xlarge','m2.4xlarge','m2.xlarge','m3.2xlarge',
+                        'm3.large','m3.medium','m3.xlarge','m4.10xlarge','m4.16xlarge','m4.2xlarge','m4.4xlarge',
+                        'm4.large','m4.xlarge','m5.12xlarge','m5.24xlarge','m5.2xlarge','m5.4xlarge','m5.large',
+                        'm5.metal','m5.xlarge','m5a.12xlarge','m5a.24xlarge','m5a.2xlarge','m5a.4xlarge','m5a.large',
+                        'm5a.xlarge','m5d.12xlarge','m5d.24xlarge','m5d.2xlarge','m5d.4xlarge','m5d.large','m5d.metal',
+                        'm5d.xlarge','p2.16xlarge','p2.8xlarge','p2.xlarge','p3.16xlarge','p3.2xlarge','p3.8xlarge',
+                        'p3dn.24xlarge','r3.2xlarge','r3.4xlarge','r3.8xlarge','r3.large','r3.xlarge','r4.16xlarge',
+                        'r4.2xlarge','r4.4xlarge','r4.8xlarge','r4.large','r4.xlarge','r5.12xlarge','r5.24xlarge',
+                        'r5.2xlarge','r5.4xlarge','r5.large','r5.xlarge','r5a.12xlarge','r5a.24xlarge','r5a.2xlarge',
+                        'r5a.4xlarge','r5a.large','r5a.xlarge','r5d.12xlarge','r5d.24xlarge','r5d.2xlarge','r5d.4xlarge',
+                        'r5d.large','r5d.xlarge','t1.micro','t2.2xlarge','t2.large','t2.medium','t2.micro','t2.nano',
+                        't2.small','t2.xlarge','t3.2xlarge','t3.large','t3.medium','t3.micro','t3.nano','t3.small',
+                        't3.xlarge','x1.16xlarge','x1.32xlarge','x1e.16xlarge','x1e.2xlarge','x1e.32xlarge','x1e.4xlarge',
+                        'x1e.8xlarge','x1e.xlarge','z1d.12xlarge','z1d.2xlarge','z1d.3xlarge','z1d.6xlarge','z1d.large','z1d.xlarge')
+
+
+SUPPORTED_EMR_INSTANCE_TYPES = ('c1.medium','c1.xlarge','c3.2xlarge','c3.4xlarge','c3.8xlarge','c3.large','c3.xlarge','c4.2xlarge',
+                                'c4.4xlarge','c4.8xlarge','c4.large','c4.xlarge','c5.18xlarge','c5.2xlarge','c5.4xlarge',
+                                'c5.9xlarge','c5.xlarge','c5d.18xlarge','c5d.2xlarge','c5d.4xlarge','c5d.9xlarge','c5d.xlarge',
+                                'c5n.18xlarge','c5n.2xlarge','c5n.4xlarge','c5n.9xlarge','c5n.xlarge',
+                                #'cc1.4xlarge',
+                                'cc2.8xlarge',
+                                'cr1.8xlarge','d2.2xlarge','d2.4xlarge','d2.8xlarge','d2.xlarge','g2.2xlarge','g3.16xlarge',
+                                'g3.4xlarge','g3.8xlarge','g3s.xlarge','h1.16xlarge','h1.2xlarge','h1.4xlarge','h1.8xlarge',
+                                #'hi1.4xlarge',
+                                'hs1.8xlarge','i2.2xlarge','i2.4xlarge','i2.8xlarge','i2.xlarge','i3.16xlarge',
+                                'i3.2xlarge','i3.4xlarge','i3.8xlarge','i3.xlarge','m1.large','m1.medium','m1.small','m1.xlarge',
+                                'm2.2xlarge','m2.4xlarge','m2.xlarge','m3.2xlarge','m3.large','m3.medium','m3.xlarge','m4.10xlarge',
+                                'm4.16xlarge','m4.2xlarge','m4.4xlarge','m4.large','m4.xlarge','m5.12xlarge','m5.24xlarge',
+                                'm5.2xlarge','m5.4xlarge','m5.xlarge','m5a.12xlarge','m5a.24xlarge','m5a.2xlarge','m5a.4xlarge',
+                                'm5a.xlarge',
+                                #'m5ad.12xlarge',
+                                # 'm5ad.24xlarge','m5ad.2xlarge','m5ad.4xlarge','m5ad.xlarge',
+                                'm5d.12xlarge','m5d.24xlarge','m5d.2xlarge','m5d.4xlarge','m5d.xlarge','p2.16xlarge','p2.8xlarge',
+                                'p2.xlarge','p3.16xlarge','p3.2xlarge','p3.8xlarge','r3.2xlarge','r3.4xlarge','r3.8xlarge',
+                                'r3.xlarge','r4.16xlarge','r4.2xlarge','r4.4xlarge','r4.8xlarge','r4.large','r4.xlarge',
+                                'r5.12xlarge','r5.24xlarge','r5.2xlarge','r5.4xlarge','r5.xlarge','r5a.12xlarge','r5a.24xlarge',
+                                'r5a.2xlarge','r5a.4xlarge','r5a.xlarge',
+                                #'r5ad.4xlarge',
+                                # 'r5d.12xlarge','r5d.24xlarge',
+                                'r5d.2xlarge','r5d.4xlarge','r5d.xlarge','z1d.12xlarge','z1d.2xlarge','z1d.3xlarge',
+                                'z1d.6xlarge','z1d.xlarge')
+
+SUPPORTED_REDSHIFT_INSTANCE_TYPES = ('ds1.xlarge','dc1.8xlarge','dc1.large','ds2.8xlarge',
+                                     'ds1.8xlarge','ds2.xlarge','dc2.8xlarge','dc2.large')
+
+SUPPORTED_INSTANCE_TYPES_MAP = {SERVICE_EC2:SUPPORTED_EC2_INSTANCE_TYPES, SERVICE_EMR:SUPPORTED_EMR_INSTANCE_TYPES ,
+                                SERVICE_REDSHIFT:SUPPORTED_REDSHIFT_INSTANCE_TYPES}
+
 
 SERVICE_INDEX_MAP = {SERVICE_S3:'AmazonS3', SERVICE_EC2:'AmazonEC2', SERVICE_RDS:'AmazonRDS',
-                     SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB', SERVICE_KINESIS:'AmazonKinesis',
+                     SERVICE_LAMBDA:'AWSLambda', SERVICE_DYNAMODB:'AmazonDynamoDB',
+                     SERVICE_KINESIS:'AmazonKinesis', SERVICE_EMR:'ElasticMapReduce', SERVICE_REDSHIFT:'AmazonRedshift',
                      SERVICE_DATA_TRANSFER:'AWSDataTransfer'}
 
 
@@ -179,7 +216,11 @@ PRODUCT_FAMILY_SERVERLESS = "Serverless"
 PRODUCT_FAMILY_DB_STORAGE = "Database Storage"
 PRODUCT_FAMILY_DB_PIOPS = "Provisioned IOPS"
 PRODUCT_FAMILY_KINESIS_STREAMS = "Kinesis Streams"
-
+PRODUCT_FAMILY_EMR_INSTANCE = "Elastic Map Reduce Instance"
+PRODUCT_FAMILIY_BUNDLE = 'Bundle'
+PRODUCT_FAMILIY_REDSHIFT_CONCURRENCY_SCALING = 'Redshift Concurrency Scaling'
+PRODUCT_FAMILIY_REDSHIFT_DATA_SCAN = 'Redshift Data Scan'
+PRODUCT_FAMILIY_STORAGE_SNAPSHOT = 'Storage Snapshot'
 
 
 SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DATABASE_INSTANCE,
@@ -187,11 +228,15 @@ SUPPORTED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DA
                               PRODUCT_FAMILY_STORAGE, PRODUCT_FAMILY_SYSTEM_OPERATION, PRODUCT_FAMILY_LOAD_BALANCER,
                               PRODUCT_FAMILY_APPLICATION_LOAD_BALANCER, PRODUCT_FAMILY_NETWORK_LOAD_BALANCER,
                               PRODUCT_FAMILY_SNAPSHOT,PRODUCT_FAMILY_SERVERLESS,PRODUCT_FAMILY_DB_STORAGE,
-                              PRODUCT_FAMILY_DB_PIOPS,PRODUCT_FAMILY_KINESIS_STREAMS)
+                              PRODUCT_FAMILY_DB_PIOPS,PRODUCT_FAMILY_KINESIS_STREAMS, PRODUCT_FAMILY_EMR_INSTANCE,
+                              PRODUCT_FAMILIY_BUNDLE, PRODUCT_FAMILIY_REDSHIFT_CONCURRENCY_SCALING, PRODUCT_FAMILIY_REDSHIFT_DATA_SCAN,
+                              PRODUCT_FAMILIY_STORAGE_SNAPSHOT
+                              )
 
 SUPPORTED_RESERVED_PRODUCT_FAMILIES = (PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILY_DATABASE_INSTANCE)
 
-SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {SERVICE_EC2:[PRODUCT_FAMILY_COMPUTE_INSTANCE,PRODUCT_FAMILY_DATA_TRANSFER, PRODUCT_FAMILY_FEE,
+SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {
+                                   SERVICE_EC2:[PRODUCT_FAMILY_COMPUTE_INSTANCE,PRODUCT_FAMILY_DATA_TRANSFER, PRODUCT_FAMILY_FEE,
                                                 PRODUCT_FAMILY_STORAGE,PRODUCT_FAMILY_SYSTEM_OPERATION,PRODUCT_FAMILY_LOAD_BALANCER,
                                                 PRODUCT_FAMILY_APPLICATION_LOAD_BALANCER,PRODUCT_FAMILY_NETWORK_LOAD_BALANCER,
                                                 PRODUCT_FAMILY_SNAPSHOT],
@@ -202,6 +247,9 @@ SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {SERVICE_EC2:[PRODUCT_FAMILY_COMPUT
                                                    PRODUCT_FAMILY_API_REQUEST],
                                    SERVICE_KINESIS:[PRODUCT_FAMILY_KINESIS_STREAMS],
                                    SERVICE_DYNAMODB:[PRODUCT_FAMILY_DB_STORAGE, PRODUCT_FAMILY_DB_PIOPS, PRODUCT_FAMILY_FEE ],
+                                   SERVICE_EMR:[PRODUCT_FAMILY_EMR_INSTANCE],
+                                   SERVICE_REDSHIFT:[PRODUCT_FAMILY_COMPUTE_INSTANCE, PRODUCT_FAMILIY_BUNDLE, PRODUCT_FAMILIY_REDSHIFT_CONCURRENCY_SCALING,
+                                                     PRODUCT_FAMILIY_REDSHIFT_DATA_SCAN, PRODUCT_FAMILIY_STORAGE_SNAPSHOT],
                                    SERVICE_DATA_TRANSFER:[PRODUCT_FAMILY_DATA_TRANSFER]
                                    }
 
@@ -209,7 +257,7 @@ SUPPORTED_PRODUCT_FAMILIES_BY_SERVICE_DICT = {SERVICE_EC2:[PRODUCT_FAMILY_COMPUT
 INFINITY = 'Inf'
 
 SORT_CRITERIA_REGION = 'region'
-SORT_CRITERIA_EC2_INSTANCE_TYPE = 'instance-type'
+SORT_CRITERIA_INSTANCE_TYPE = 'instance-type'
 SORT_CRITERIA_OS = 'os'
 SORT_CRITERIA_DB_INSTANCE_CLASS = 'db-instance-class'
 SORT_CRITERIA_DB_ENGINE = 'engine'
@@ -305,7 +353,14 @@ SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE = 'convertible'
 EC2_OFFERING_CLASS_STANDARD = 'standard'
 EC2_OFFERING_CLASS_CONVERTIBLE = 'convertible'
 
-SUPPORTED_EC2_OFFERING_CLASSES = (SCRIPT_EC2_OFFERING_CLASS_STANDARD, SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE)
+SUPPORTED_EC2_OFFERING_CLASSES = [SCRIPT_EC2_OFFERING_CLASS_STANDARD, SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE]
+SUPPORTED_RDS_OFFERING_CLASSES = [SCRIPT_EC2_OFFERING_CLASS_STANDARD]
+SUPPORTED_EMR_OFFERING_CLASSES = [SCRIPT_EC2_OFFERING_CLASS_STANDARD, SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE]
+SUPPORTED_REDSHIFT_OFFERING_CLASSES = [SCRIPT_EC2_OFFERING_CLASS_STANDARD]
+
+SUPPORTED_OFFERING_CLASSES_MAP = {SERVICE_EC2:SUPPORTED_EC2_OFFERING_CLASSES, SERVICE_RDS: SUPPORTED_RDS_OFFERING_CLASSES,
+                                  SERVICE_EMR:SUPPORTED_EMR_OFFERING_CLASSES,
+                                  SERVICE_REDSHIFT: SUPPORTED_REDSHIFT_OFFERING_CLASSES }
 
 EC2_OFFERING_CLASS_MAP = {SCRIPT_EC2_OFFERING_CLASS_STANDARD:EC2_OFFERING_CLASS_STANDARD,
                           SCRIPT_EC2_OFFERING_CLASS_CONVERTIBLE: EC2_OFFERING_CLASS_CONVERTIBLE}

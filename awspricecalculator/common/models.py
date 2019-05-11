@@ -1,6 +1,7 @@
 import math, logging
-import consts
-from errors import ValidationError
+from . import consts
+from .errors import ValidationError
+from tabulate import tabulate
 
 log = logging.getLogger()
 
@@ -128,8 +129,8 @@ class Ec2PriceDimension():
     def validate(self):
       validation_message = ""
 
-      if self.instanceType and self.instanceType not in consts.SUPPORTED_INSTANCE_TYPES:
-        validation_message += "instance-type is "+self.instanceType+", must be one of the following values:"+str(consts.SUPPORTED_INSTANCE_TYPES)
+      if self.instanceType and self.instanceType not in consts.SUPPORTED_EC2_INSTANCE_TYPES:
+        validation_message += "instance-type is "+self.instanceType+", must be one of the following values:"+str(consts.SUPPORTED_EC2_INSTANCE_TYPES)
       if self.region not in consts.SUPPORTED_REGIONS:
         validation_message += "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
       if not self.operatingSystem:
@@ -213,6 +214,7 @@ class RdsPriceDimension():
       self.instanceCount = int(kargs.get('instanceCount',0))
       self.years = int(kargs.get('years',1))
 
+     #TODO - create a separate model for DataTransfer
       #Data Transfer
       self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
       self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
@@ -295,6 +297,106 @@ class RdsPriceDimension():
           raise ValidationError(validation_message)
 
       return
+
+
+class EmrPriceDimension():
+    def __init__(self, **kargs):
+
+      self.region = kargs['region']
+      self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
+      self.instanceType = kargs.get('instanceType','')
+
+      self.years = int(kargs.get('years',1))
+      ec2InstanceHours = 0
+      if self.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
+        self.instanceHours = self.years * consts.HOURS_IN_MONTH * 12
+      else:
+        self.instanceHours = int(kargs.get('instanceHours',0))
+        ec2InstanceHours = self.instanceHours  #only set ec2InstanceHours for OnDemand, otherwise EC2 validation will fail
+
+
+      self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
+      if not self.offeringClass: self.offeringClass = consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD
+      self.offeringType = kargs.get('offeringType', consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT)
+
+      #Data Transfer
+      self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
+      self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
+      self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+      self.toRegion = kargs.get('toRegion','')
+
+      ec2Args = {'region':self.region, 'termType':self.termType, 'instanceType':self.instanceType,
+                 'instanceHours':ec2InstanceHours,  'pIops':int(kargs.get('pIops',0)), 'ebsVolumeType':kargs.get('ebsVolumeType',''),
+                 'ebsStorageGbMonth':int(kargs.get('ebsStorageGbMonth',0)), 'instanceCount': kargs.get('instanceCount'),
+                 'years': kargs.get('years'), 'offeringType':kargs.get('offeringType'), 'offeringClass':kargs.get('offeringClass')}
+
+      #self.ec2PriceDims = Ec2PriceDimension(**ec2Args)
+      self.ec2PriceDims = ec2Args
+
+      self.validate()
+
+    def validate(self):
+      validation_message = ""
+
+      #TODO: add supported EMR Instance Type validation
+
+      if self.region not in consts.SUPPORTED_REGIONS:
+        validation_message += "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+      if self.termType not in consts.SUPPORTED_TERM_TYPES:
+          validation_message += "term-type is "+self.termType+", must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
+      if self.offeringClass not in consts.SUPPORTED_EMR_OFFERING_CLASSES:
+          validation_message += "offeringClass is "+self.offeringClass+", must be one of the following values:[{}]".format(consts.SUPPORTED_EMR_OFFERING_CLASSES)
+
+      validation_ok = True
+      if validation_message:
+          raise ValidationError(validation_message)
+
+      return validation_ok
+
+
+class RedshiftPriceDimension():
+    def __init__(self, **kargs):
+
+      self.region = kargs['region']
+      self.termType = kargs.get('termType',consts.SCRIPT_TERM_TYPE_ON_DEMAND)
+      self.instanceType = kargs.get('instanceType','')
+      self.instanceHours = int(kargs.get('instanceHours',0))
+
+      #Reserved Instances
+      self.offeringClass = kargs.get('offeringClass',consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD)
+      if not self.offeringClass: self.offeringClass = consts.SCRIPT_EC2_OFFERING_CLASS_STANDARD
+      self.instanceCount = int(kargs.get('instanceCount',0))
+      self.offeringType = kargs.get('offeringType','')
+      self.years = int(kargs.get('years',1))
+
+      #TODO: add storage snapshots, data scan, concurrency scaling,
+
+      #Data Transfer
+      self.dataTransferOutInternetGb = kargs.get('dataTransferOutInternetGb',0)
+      self.dataTransferOutIntraRegionGb = kargs.get('dataTransferOutIntraRegionGb',0)
+      self.dataTransferOutInterRegionGb = kargs.get('dataTransferOutInterRegionGb',0)
+      self.toRegion = kargs.get('toRegion','')
+
+
+      self.validate()
+
+    def validate(self):
+      validation_message = ""
+
+      if self.region not in consts.SUPPORTED_REGIONS:
+        validation_message += "region is "+self.region+", must be one of the following values:"+str(consts.SUPPORTED_REGIONS)
+      if self.termType not in consts.SUPPORTED_TERM_TYPES:
+          validation_message += "term-type is "+self.termType+", must be one of the following values:[{}]".format(consts.SUPPORTED_TERM_TYPES)
+      if self.offeringClass not in consts.SUPPORTED_REDSHIFT_OFFERING_CLASSES:
+          validation_message += "offeringClass is "+self.offeringClass+", must be one of the following values:[{}]".format(consts.SUPPORTED_REDSHIFT_OFFERING_CLASSES)
+      if self.instanceType not in consts.SUPPORTED_REDSHIFT_INSTANCE_TYPES:
+          validation_message += "instanceType is "+self.instanceType+", must be one of the following values:[{}]".format(consts.SUPPORTED_REDSHIFT_INSTANCE_TYPES)
+
+      validation_ok = True
+      if validation_message:
+          raise ValidationError(validation_message)
+
+      return validation_ok
 
 
 
@@ -417,7 +519,7 @@ class PricingResult():
         self.currency = consts.DEFAULT_CURRENCY
         self.pricingRecords = pricing_records
 
-        #TODO: populate this object
+        #TODO: populate
         self.priceDimensions = {}
 
 class PricingRecord():
@@ -492,6 +594,7 @@ class TermPricingAnalysis():
         self.years = years
         self.pricingScenarios = []
         self.monthlyBreakdown = []
+        self.tabularData = ""
 
     def get_pricing_scenario(self, region, termType, offerClass, offerType, years):
         #print ("get_pricing_scenario - looking for termType:[{}] - offerClass:[{}] - offerType:[{}] - years:[{}]".format())
@@ -627,7 +730,17 @@ class TermPricingAnalysis():
       self.csvData = csvtxt
       return
 
+    def get_tabular_data(self):
+        if not self.csvData: self.get_csv_data()
+        csvtext = self.csvData
+        #need to reduce the length of each field, otherwise the table headers overflow and data is not displayed properly
+        headers = csvtext.split("\n")[0].replace("reserved","rsv").replace("standard","std").\
+            replace("convertible","conv").replace("upfront","upfr").replace("partial","part").replace("demand","dmd").split(",")
+        data = []
+        for r in csvtext.split("\n")[1:]:
+            data.append(r.split(","))
 
+        self.tabularData = tabulate(data, headers=headers, tablefmt='github')
 
     """
     def get_csv_data(self):
@@ -694,7 +807,6 @@ class TermPricingAnalysis():
         return
     """
 
-
     def getUpfrontFee(self, pricingScenarioDict):
         result = 0
         if pricingScenarioDict:
@@ -705,14 +817,16 @@ class TermPricingAnalysis():
                     break
         return result
 
+    #TODO: fix for EMR! - it only gets EMR portion
     def getMonthlyCost(self, pricingScenarioDict):
         result = 0
         if pricingScenarioDict:
             for p in pricingScenarioDict['pricingRecords']:
                 if pricingScenarioDict['priceDimensions'].get('offeringType','') != consts.SCRIPT_EC2_PURCHASE_OPTION_ALL_UPFRONT \
                     and 'upfront' not in p['description'].lower():
-                    return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
-        else: return result
+                    #return p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
+                    result += p['amount'] / (12 * int(pricingScenarioDict['priceDimensions']['years']))
+        return result
 
 
 class TermPricingScenario():

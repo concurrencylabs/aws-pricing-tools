@@ -1,14 +1,16 @@
 import json, logging
-import consts, models
+from . import consts, models
 import datetime
 
 from ..ec2 import pricing as ec2pricing
 from ..s3 import pricing as s3pricing
 from ..rds import pricing as rdspricing
+from ..emr import pricing as emrpricing
+from ..redshift import pricing as redshiftpricing
 from ..awslambda import pricing as lambdapricing
 from ..dynamodb import pricing as ddbpricing
 from ..kinesis import pricing as kinesispricing
-from errors import NoDataFoundError
+from . errors import NoDataFoundError
 
 log = logging.getLogger()
 
@@ -63,6 +65,10 @@ def compare(**kwargs):
       try:
         if service == consts.SERVICE_EC2:
           p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
+        if service == consts.SERVICE_EMR:
+          p = emrpricing.calculate(models.EmrPriceDimension(**kwargs))
+        if service == consts.SERVICE_REDSHIFT:
+          p = redshiftpricing.calculate(models.RedshiftPriceDimension(**kwargs))
         if service == consts.SERVICE_S3:
           p = s3pricing.calculate(models.S3PriceDimension(**kwargs))
         if service == consts.SERVICE_RDS:
@@ -81,17 +87,19 @@ def compare(**kwargs):
       #Only append records for those combinations that exist in the PriceList API
       if p['pricingRecords']: result.append((p['totalCost'],r,p))
 
- #Sort by EC2 Instance Type
-  if sortCriteria == consts.SORT_CRITERIA_EC2_INSTANCE_TYPE:
-    tableCriteriaHeader = "Total cost sorted by EC2 Instance Type in region ["+kwargs['region']+"]\nType\t"
+ #Sort by Instance Type (EC2, EMR, Redshift, etc.)
+  if sortCriteria == consts.SORT_CRITERIA_INSTANCE_TYPE:
+    tableCriteriaHeader = "Total cost sorted by {} Instance Type in region [{}]\nType\t".format(service, kwargs['region'])
     instanceTypes = kwargs.get('instanceTypes','')
     if instanceTypes: instanceTypes = instanceTypes.split(',')
-    else: instanceTypes=consts.SUPPORTED_INSTANCE_TYPES
+    else: instanceTypes=consts.SUPPORTED_INSTANCE_TYPES_MAP[service]
     log.info("instanceTypes: [{}]".format(instanceTypes))
     for t in instanceTypes:
       kwargs['instanceType']=t
       try:
-        p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
+        if service == consts.SERVICE_EC2: p = ec2pricing.calculate(models.Ec2PriceDimension(**kwargs))
+        if service == consts.SERVICE_EMR: p = emrpricing.calculate(models.EmrPriceDimension(**kwargs))
+        if service == consts.SERVICE_REDSHIFT: p = redshiftpricing.calculate(models.RedshiftPriceDimension(**kwargs))
         result.append((p['totalCost'],t,p))
       except NoDataFoundError:
         pass
@@ -241,6 +249,8 @@ def compare(**kwargs):
   pricecomparison.pricingScenarios = pricingScenarios
 
   print("Sorted cost table:")
+  #TODO: convert to table format using Python existing libraries (i.e. prettytable, etc.)
+  #TODO: move table string to PriceComparison and choose to print it from calling methods (or not)
   print(tableCriteriaHeader+"Cost(USD)\t% compared to cheapest\t% compared to previous\tdelta cheapest\tdelta previous")
   for r in result:
     rowCriteriaValues = ""
@@ -270,7 +280,8 @@ def compare_term_types(service, **kwargs):
   #Iterate through applicable combinations of term types, purchase options and years
   termTypes = kwargs.get('termTypes',consts.SUPPORTED_TERM_TYPES)
   purchaseOptions = kwargs.get('purchaseOptions',consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
-  offeringClasses = kwargs.get('offeringClasses',consts.SUPPORTED_EC2_OFFERING_CLASSES)
+  offeringClasses = kwargs.get('offeringClasses',consts.SUPPORTED_OFFERING_CLASSES_MAP.get(service,consts.SUPPORTED_EC2_OFFERING_CLASSES))
+  print("compare_term_types - offeringClasses:[{}]".format(offeringClasses))
   for r in regions:
     kwargs['region'] = r
     for t in termTypes:
@@ -307,6 +318,16 @@ def compare_term_types(service, **kwargs):
                 pdims = models.RdsPriceDimension(**kwargs)
                 pdims.region=r
                 priceCalc = rdspricing.calculate(pdims)
+              elif service == consts.SERVICE_EMR:
+                pdims = models.EmrPriceDimension(**kwargs)
+                pdims.region=r
+                priceCalc = emrpricing.calculate(pdims)
+              elif service == consts.SERVICE_REDSHIFT:
+                pdims = models.RedshiftPriceDimension(**kwargs)
+                pdims.region=r
+                priceCalc = redshiftpricing.calculate(pdims)
+
+
               log.info("priceCalc: {}".format(json.dumps(priceCalc, indent=4)))
               #pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
               if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND: onDemandTotal = priceCalc['totalCost']
@@ -325,10 +346,11 @@ def compare_term_types(service, **kwargs):
 
   pricingAnalysis = models.TermPricingAnalysis(awsPriceListApiVersion, regions, service, years)
   pricingAnalysis.pricingScenarios = sortedPricingScenarios
-  #TODO: move the next 3 calls to a single method
+  #TODO: move the next 4 calls to a single method
   pricingAnalysis.calculate_months_to_recover()
   pricingAnalysis.calculate_monthly_breakdown()
   pricingAnalysis.get_csv_data()
+  pricingAnalysis.get_tabular_data()
   return pricingAnalysis.__dict__
 
 
@@ -336,8 +358,7 @@ def compare_term_types(service, **kwargs):
 #TODO: use for sortCriteria calculations too (so we only have this logic once)
 #TODO: modify such that items in unsortedScenarioArray are not a tuple, but simply a pricingScenario object
 def calculate_sorted_results(unsortedScenarioArray):
-
-  sorted_result = sorted(unsortedScenarioArray)
+  sorted_result = sorted(unsortedScenarioArray, key=lambda scenario: scenario[0])
   if sorted_result: cheapest_price = sorted_result[0][0]
   result = []
   i = 0
@@ -373,7 +394,6 @@ def calculate_sorted_results(unsortedScenarioArray):
 def get_index_file_name(service, name, format):
   result = '../awspricecalculator/'+service+'/data/'+name+'.'+format
   return result
-
 
 
 

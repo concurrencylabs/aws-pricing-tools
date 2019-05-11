@@ -1,10 +1,10 @@
 #!/usr/bin/python
 import os, sys, getopt, json, csv
-from urllib2 import urlopen
+import urllib.request
 
 sys.path.insert(0, os.path.abspath('..'))
-import awspricecalculator.common.consts as consts
-import awspricecalculator.common.phelper as phelper
+from awspricecalculator.common import consts as consts
+from awspricecalculator.common import phelper as phelper
 
 __location__ = os.path.dirname(os.path.realpath(__file__))
 dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator", "data")
@@ -16,7 +16,8 @@ This script gets the latest index files from the AWS Price List API.
 def main(argv):
 
   SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA,
-                        consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_DATA_TRANSFER, consts.SERVICE_ALL)
+                        consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_DATA_TRANSFER, consts.SERVICE_EMR,
+                        consts.SERVICE_REDSHIFT, consts.SERVICE_ALL)
   SUPPORTED_FORMATS = ('json','csv')
   OFFER_INDEX_URL = 'https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/{serviceIndex}/current/index.'
 
@@ -83,7 +84,7 @@ def main(argv):
           if not os.path.exists(servicedatapath): os.mkdir(servicedatapath)
           filename = servicedatapath+"/index."+format
 
-          with open(filename, "w") as f: f.write(urlopen(offerIndexUrl).read())
+          with open(filename, "wb") as f: f.write(urllib.request.urlopen(offerIndexUrl).read())
 
           if format == 'csv':
             remove_metadata(filename)
@@ -98,7 +99,7 @@ This method removes the metadata from the index files and writes it in a separat
 """
 
 def remove_metadata(index_filename):
-  print "Removing metadata from file [{}]".format(index_filename)
+  print ("Removing metadata from file [{}]".format(index_filename))
   metadata_filename = index_filename.replace('.csv','_metadata.json')
   metadata_dict = {}
   with open(index_filename,"r") as rf:
@@ -114,9 +115,9 @@ def remove_metadata(index_filename):
         wf.write(l)
       i += 1
   with open(metadata_filename,"w") as mf:
-    print "Creating metadata file [{}]".format(metadata_filename)
+    print ("Creating metadata file [{}]".format(metadata_filename))
     metadata_json = json.dumps(metadata_dict,sort_keys=False,indent=4)
-    print "metadata_json: [{}]".format(metadata_json)
+    print ("metadata_json: [{}]".format(metadata_json))
     mf.write(metadata_json)
 
 """
@@ -134,14 +135,14 @@ def split_index(service, region, term, **args):
     productFamilies = {}
     usageGroupings=[]
     partition_keys = phelper.get_partition_keys(service, region, term, **args)#All regions and all term types (On-Demand + Reserved)
+    #print("partition_keys:[{}]".format(partition_keys))
     for pk in partition_keys:
         indexDict[pk]=[]
 
-    #print ("indexDict:[{}]".format(indexDict))
-
     fieldnames = []
 
-    with open(get_index_file_name(service, 'index', 'csv'), 'rb') as csvfile:
+    #with open(get_index_file_name(service, 'index', 'csv'), 'rb') as csvfile:
+    with open(get_index_file_name(service, 'index', 'csv'), 'r') as csvfile:
         pricelist = csv.DictReader(csvfile, delimiter=',', quotechar='"')
         indexRegion = ''
         x = 0
@@ -158,13 +159,15 @@ def split_index(service, region, term, **args):
                 #TODO:move the creation of the index dimensions to a common function
                 if service == consts.SERVICE_EC2:
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row['Tenancy'], row['PurchaseOption'])
-                elif service == consts.SERVICE_RDS:#'Tenancy' is not part of the RDS index, therefore default it to Shared
+                elif service in (consts.SERVICE_RDS, consts.SERVICE_REDSHIFT):#'Tenancy' is not part of the RDS/Redshift index, therefore default it to Shared
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['OfferingClass'],row.get('Tenancy',consts.EC2_TENANCY_SHARED),row['PurchaseOption'])
             else:
                 if service == consts.SERVICE_EC2:
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'],row['Tenancy'])
                 else:
                     indexDimensions = (indexRegion,row['TermType'],row['Product Family'])
+
+            #print ("TermType:[{}] - service:[{}] - indexDimensions:[{}]".format(row.get('TermType',''), service, indexDimensions))
 
             indexKey = phelper.create_file_key(indexDimensions)
             if indexKey in indexDict:
@@ -188,7 +191,7 @@ def split_index(service, region, term, **args):
     for f in indexDict.keys():
         if indexDict[f]:
             i += 1
-            print "Writing file for key: [{}]".format(f)
+            print ("Writing file for key: [{}]".format(f))
             with open(get_index_file_name(service, f, 'csv'),'w') as csvfile:
                 writer = csv.DictWriter(csvfile, fieldnames=fieldnames, dialect='excel', quoting=csv.QUOTE_ALL)
                 writer.writeheader()
@@ -196,7 +199,7 @@ def split_index(service, region, term, **args):
                     writer.writerow(r)
 
     print ("Number of records in main index file: [{}]".format(x))
-    print "Number of files written: [{}]".format(i)
+    print ("Number of files written: [{}]".format(i))
     return
 
 

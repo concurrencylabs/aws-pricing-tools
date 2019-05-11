@@ -90,7 +90,7 @@ def main(argv):
                     logevents = logsclient.get_log_events(**logeventsargs)
                     if 'events' in logevents:
                         if len(logevents['events']):
-                            print "\nEvents for logGroup:[{}] - logstream:[{}] - nextForwardToken:[{}]".format(log_group_name, ls['logStreamName'],nextEventsForwardToken)
+                            print ("\nEvents for logGroup:[{}] - logstream:[{}] - nextForwardToken:[{}]".format(log_group_name, ls['logStreamName'],nextEventsForwardToken))
                             for e in logevents['events']:
                                 #Extract lambda execution duration and memory utilization from "REPORT" log events
                                 if 'REPORT RequestId:' in e['message']:
@@ -105,7 +105,7 @@ def main(argv):
                                     else:
                                         if e['timestamp'] < firstEventTs: firstEventTs = e['timestamp']
                                         if e['timestamp'] > lastEventTs: lastEventTs = e['timestamp']
-                                    print "mem_used:[{}] - mem_size:[{}] - timestampMs:[{}] -  timestamp:[{}]".format(mem_used,prov_mem_size, e['timestamp'], time.strftime(ts_format, time.gmtime(e['timestamp']/1000)))
+                                    print ("mem_used:[{}] - mem_size:[{}] - timestampMs:[{}] -  timestamp:[{}]".format(mem_used,prov_mem_size, e['timestamp'], time.strftime(ts_format, time.gmtime(e['timestamp']/1000))))
                                     print e['message']
                                     i += 1
                         else: break
@@ -149,13 +149,13 @@ def main(argv):
                   }
     #print(json.dumps(optim_info,sort_keys=False,indent=4))
 
-    print "avg_duration_ms:[{}] avg_used_mem:[{}] prov_mem_size:[{}] records:[{}]".format(avg_duration_ms, avg_used_mem,prov_mem_size,i)
-    print "p90_duration_ms:[{}] p99_duration_ms:[{}] p100_duration_ms:[{}]".format(p90_duration_ms, p99_duration_ms, p100_duration_ms)
+    print ("avg_duration_ms:[{}] avg_used_mem:[{}] prov_mem_size:[{}] records:[{}]".format(avg_duration_ms, avg_used_mem,prov_mem_size,i))
+    print ("p90_duration_ms:[{}] p99_duration_ms:[{}] p100_duration_ms:[{}]".format(p90_duration_ms, p99_duration_ms, p100_duration_ms))
 
-    print "------------------------------------------------------------------------------------"
-    print "OPTIMIZATION SUMMARY\n"
-    print "**Data sample used for calculation:**"
-    print "CloudWatch Log Group: [{}]\n" \
+    print ("------------------------------------------------------------------------------------")
+    print ("OPTIMIZATION SUMMARY\n")
+    print ("**Data sample used for calculation:**")
+    print ("CloudWatch Log Group: [{}]\n" \
           "First Event time:[{}]\n" \
           "Last Event time:[{}]\n" \
           "Number of executions:[{}]\n" \
@@ -163,25 +163,25 @@ def main(argv):
         format(log_group_name,
                time.strftime(ts_format, time.gmtime(base_usage.startTs/1000)),
                time.strftime(ts_format, time.gmtime(base_usage.endTs/1000)),
-               base_usage.requestCount, base_usage.avgTps)
-    print "\n**Usage for Lambda function [{}] in the sample period is the following:**".format(function)
-    print "Average duration per Lambda execution: {}ms\n" \
+               base_usage.requestCount, base_usage.avgTps))
+    print ("\n**Usage for Lambda function [{}] in the sample period is the following:**".format(function))
+    print ("Average duration per Lambda execution: {}ms\n" \
           "Average consumed memory per execution: {}MB\n" \
           "Configured memory in your Lambda function: {}MB\n" \
           "Memory utilization (used/allocated): {}%\n" \
           "Total projected cost: ${}USD - {}".\
           format(base_usage.avgDurationMs, base_usage.avgMemUsedMb,base_usage.memSizeMb,
-                base_usage.memUsedPct,base_usage.projectedCost, base_usage.projectedPeriod)
+                base_usage.memUsedPct,base_usage.projectedCost, base_usage.projectedPeriod))
 
     if memoptims:
-        print "\nThe following Lambda memory configurations could save you money (assuming constant execution time)"
+        print ("\nThe following Lambda memory configurations could save you money (assuming constant execution time)")
         labels = ['memSizeMb', 'memUsedPct', 'cost', 'timePeriod', 'savingsAmt']
-        print "\n"+ResultsTable(memoptims,labels).dict2md()
+        print ("\n"+ResultsTable(memoptims,labels).dict2md())
     if durationoptims:
-        print "\n\nCan you make your function execute faster? The following Lambda execution durations will save you money (assuming memory allocation remains constant):"
+        print ("\n\nCan you make your function execute faster? The following Lambda execution durations will save you money (assuming memory allocation remains constant):")
         labels = ['durationMs', 'cost', 'timePeriod', 'savingsAmt']
-        print "\n"+ResultsTable(durationoptims,labels).dict2md()
-    print "------------------------------------------------------------------------------------"
+        print ("\n"+ResultsTable(durationoptims,labels).dict2md())
+    print ("------------------------------------------------------------------------------------")
 
 
 
@@ -252,13 +252,13 @@ class LambdaSampleUsage():
 
         args = {'region':region, 'requestCount':self.projectedRequestCount,
                 'avgDurationMs':math.ceil(avgDurationMs/100)*100, 'memoryMb':memSizeMb}
-        print "args: {}".format(args)
+        print ("args: {}".format(args))
         self.projectedCost = lambdapricing.calculate(data.LambdaPriceDimension(**args))['totalCost']
 
 
     def get_projected_request_count(self,requestCount):
         result = 0
-        print "elapsed_ms:[{}] - period: [{}]".format(self.elapsedMs, self.projectedPeriod)
+        print ("elapsed_ms:[{}] - period: [{}]".format(self.elapsedMs, self.projectedPeriod))
         if self.elapsedMs:
             result = float(requestCount)*(MS_MAP[self.projectedPeriod]/self.elapsedMs)
         return int(result)
