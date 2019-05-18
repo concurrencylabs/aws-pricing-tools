@@ -66,7 +66,8 @@ def calculate(pdim):
     pricing_records, cost = phelper.calculate_price(consts.SERVICE_LAMBDA, dataTransferDb, query, pdim.dataTransferOutInterRegionGb, pricing_records, cost)
 
 
-  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  extraargs = {'priceDimensions':pdim}
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records, **extraargs)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
   log.debug("Total time to compute: [{}]".format(ts.finish('totalCalculationAwsLambda')))

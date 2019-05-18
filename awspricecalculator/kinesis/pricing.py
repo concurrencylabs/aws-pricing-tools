@@ -41,8 +41,8 @@ def calculate(pdim):
 
   #Data Transfer - N/A
   #Note there is no charge for data transfer in Kinesis as per https://aws.amazon.com/kinesis/streams/pricing/
-
-  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  extraargs = {'priceDimensions':pdim}
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records, **extraargs)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
   log.debug("Total time to compute: [{}]".format(ts.finish('totalCalculationKinesis')))

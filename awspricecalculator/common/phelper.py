@@ -12,7 +12,7 @@ log = logging.getLogger()
 log.setLevel(consts.LOG_LEVEL)
 
 __location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
-site_pkgs = os.path.abspath(os.path.join(__location__, os.pardir, os.pardir,"lib", "python2.7", "site-packages" ))
+site_pkgs = os.path.abspath(os.path.join(__location__, os.pardir, os.pardir,"lib", "python3.7", "site-packages" ))
 sys.path.append(site_pkgs)
 #print "site_pkgs: [{}]".format(site_pkgs)
 

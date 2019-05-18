@@ -8,8 +8,9 @@ setup(name='awspricecalculator',
       author_email='github@concurrencylabs.com',
       license='GNU',
       packages=['awspricecalculator','awspricecalculator.common',
-      	'awspricecalculator.awslambda','awspricecalculator.ec2','awspricecalculator.rds','awspricecalculator.s3',
-                'awspricecalculator.dynamodb', 'awspricecalculator.kinesis', 'awspricecalculator.datatransfer'],
+      	'awspricecalculator.awslambda','awspricecalculator.ec2','awspricecalculator.rds', 'awspricecalculator.emr',
+                'awspricecalculator.redshift', 'awspricecalculator.s3','awspricecalculator.dynamodb',
+                'awspricecalculator.kinesis', 'awspricecalculator.datatransfer'],
       include_package_data=True,
       zip_safe=False)
 

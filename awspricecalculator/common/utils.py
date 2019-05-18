@@ -83,7 +83,7 @@ def compare(**kwargs):
       except NoDataFoundError:
         continue
 
-      log.debug ("PricingResult: [{}]".format(json.dumps(p, indent=4)))
+      log.debug ("PricingResult: [{}]".format(json.dumps(p)))
       #Only append records for those combinations that exist in the PriceList API
       if p['pricingRecords']: result.append((p['totalCost'],r,p))
 
@@ -289,7 +289,7 @@ def compare_term_types(service, **kwargs):
       for oc in offeringClasses:
         for p in purchaseOptions:
           addFlag = False
-          kwargs['instanceHours'] = 365 * 24 * int(kwargs['instanceCount']) * int(years)
+          kwargs['instanceHours'] = calculate_instance_hours_year(kwargs['instanceCount'], years)
           kwargs['termType']=t
 
           if t == consts.SCRIPT_TERM_TYPE_RESERVED:
@@ -328,7 +328,7 @@ def compare_term_types(service, **kwargs):
                 priceCalc = redshiftpricing.calculate(pdims)
 
 
-              log.info("priceCalc: {}".format(json.dumps(priceCalc, indent=4)))
+              log.info("priceCalc: {}".format(json.dumps(priceCalc)))
               #pricingScenario = models.TermPricingScenario(calcKey, dict(kwargs), priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
               if t == consts.SCRIPT_TERM_TYPE_ON_DEMAND: onDemandTotal = priceCalc['totalCost']
               pricingScenario = models.TermPricingScenario(calcKey, pdims.__dict__, priceCalc['pricingRecords'], priceCalc['totalCost'], onDemandTotal)
@@ -390,12 +390,15 @@ def calculate_sorted_results(unsortedScenarioArray):
   return result
 
 
-
 def get_index_file_name(service, name, format):
   result = '../awspricecalculator/'+service+'/data/'+name+'.'+format
   return result
 
-
+"""
+Common method to calculate instance hours in a year - at the time it ignores leap years
+"""
+def calculate_instance_hours_year(instanceCount, years):
+  return 365 * 24 * int(instanceCount) * int(years)
 
 
 

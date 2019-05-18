@@ -124,7 +124,8 @@ def calculate(pdim):
     log.debug("Time to search:[{}]".format(ts.finish('tinyDbSearchComputeFileReserved')))
 
   awsPriceListApiVersion = indexMetadata['Version']
-  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  extraargs = {'priceDimensions':pdim}
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records, **extraargs)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
   log.debug("Total time: [{}]".format(ts.finish('totalCalculation')))

@@ -50,8 +50,8 @@ def calculate(pdim):
   #data transferred across Regions (e.g., between Amazon DynamoDB in the US East (Northern Virginia) Region and Amazon EC2 in the EU (Ireland) Region), will be charged on both sides of the transfer.
 
   #API Requests (only applies for DDB Streams)(TODO)
-
-  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  extraargs = {'priceDimensions':pdim}
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records, **extraargs)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
 
   log.debug("Total time to compute: [{}]".format(ts.finish('totalCalculationDynamoDB')))

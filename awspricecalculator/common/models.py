@@ -1,9 +1,16 @@
 import math, logging
+import os, sys
 from . import consts
 from .errors import ValidationError
-from tabulate import tabulate
 
 log = logging.getLogger()
+
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
+site_pkgs = os.path.abspath(os.path.join(__location__, os.pardir, os.pardir,"lib", "python3.7", "site-packages" ))
+sys.path.append(site_pkgs)
+
+from tabulate import tabulate
+
 
 class ElbPriceDimension():
     def __init__(self, hours, dataProcessedGb):
@@ -327,8 +334,8 @@ class EmrPriceDimension():
 
       ec2Args = {'region':self.region, 'termType':self.termType, 'instanceType':self.instanceType,
                  'instanceHours':ec2InstanceHours,  'pIops':int(kargs.get('pIops',0)), 'ebsVolumeType':kargs.get('ebsVolumeType',''),
-                 'ebsStorageGbMonth':int(kargs.get('ebsStorageGbMonth',0)), 'instanceCount': kargs.get('instanceCount'),
-                 'years': kargs.get('years'), 'offeringType':kargs.get('offeringType'), 'offeringClass':kargs.get('offeringClass')}
+                 'ebsStorageGbMonth':int(kargs.get('ebsStorageGbMonth',0)), 'instanceCount': kargs.get('instanceCount',0),
+                 'years': self.years, 'offeringType':self.offeringType, 'offeringClass':self.offeringClass}
 
       #self.ec2PriceDims = Ec2PriceDimension(**ec2Args)
       self.ec2PriceDims = ec2Args
@@ -509,8 +516,9 @@ class KinesisPriceDimension():
 This object represents the total price calculation.
 It includes an array of PricingRecord objects, which are a breakdown of how the price is calculated
 """
+#TODO: update arguments, remove region and include one argument for pdim
 class PricingResult():
-    def __init__(self, awsPriceListApiVersion, region, total_cost, pricing_records):
+    def __init__(self, awsPriceListApiVersion, region, total_cost, pricing_records, **args):
         total_cost = round(total_cost,2)
         self.version = consts.AWS_PRICE_CALCULATOR_VERSION
         self.awsPriceListApiVersion = awsPriceListApiVersion
@@ -518,9 +526,7 @@ class PricingResult():
         self.totalCost = round(total_cost,2)
         self.currency = consts.DEFAULT_CURRENCY
         self.pricingRecords = pricing_records
-
-        #TODO: populate
-        self.priceDimensions = {}
+        self.priceDimensions = args.get('priceDimensions',{}).__dict__
 
 class PricingRecord():
     def __init__(self, service, amt, desc, pricePerUnit, usgUnits, rateCode):

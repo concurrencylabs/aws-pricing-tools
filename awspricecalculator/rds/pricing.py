@@ -194,6 +194,7 @@ def calculate(pdim):
 
 
   log.debug("Total time to calculate price: [{}]".format(ts.finish('totalCalculation')))
-  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records)
+  extraargs = {'priceDimensions':pdim}
+  pricing_result = PricingResult(awsPriceListApiVersion, pdim.region, cost, pricing_records, **extraargs)
   log.debug(json.dumps(vars(pricing_result),sort_keys=False,indent=4))
   return pricing_result.__dict__

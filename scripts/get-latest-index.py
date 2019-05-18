@@ -1,10 +1,16 @@
 #!/usr/bin/python
-import os, sys, getopt, json, csv
+import os, sys, getopt, json, csv, ssl
 import urllib.request
 
 sys.path.insert(0, os.path.abspath('..'))
 from awspricecalculator.common import consts as consts
 from awspricecalculator.common import phelper as phelper
+
+
+if (not os.environ.get('PYTHONHTTPSVERIFY', '') and
+    getattr(ssl, '_create_unverified_context', None)):
+    ssl._create_default_https_context = ssl._create_unverified_context
+
 
 __location__ = os.path.dirname(os.path.realpath(__file__))
 dataindexpath = os.path.join(os.path.split(__location__)[0],"awspricecalculator", "data")
@@ -14,6 +20,7 @@ This script gets the latest index files from the AWS Price List API.
 """
 #TODO: add support for term-type = onDemand, Reserved or both
 def main(argv):
+
 
   SUPPORTED_SERVICES = (consts.SERVICE_S3, consts.SERVICE_EC2, consts.SERVICE_RDS, consts.SERVICE_LAMBDA,
                         consts.SERVICE_DYNAMODB, consts.SERVICE_KINESIS, consts.SERVICE_DATA_TRANSFER, consts.SERVICE_EMR,
