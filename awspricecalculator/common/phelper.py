@@ -202,6 +202,7 @@ def calculate_price(service, db, query, usageAmount, pricingRecords, cost):
     billableUsage, pricePerUnit, amt = getBillableBandCsv(r, usageAmount)
     cost = cost + amt
     if billableUsage:
+      #TODO: calculate rounding dynamically - don't set to 4 - use description to set the right rounding
       pricing_record = PricingRecord(service,round(amt,4),r['PriceDescription'],pricePerUnit,billableUsage,r['RateCode'])
       pricingRecords.append(vars(pricing_record))
 

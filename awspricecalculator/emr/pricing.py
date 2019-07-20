@@ -48,7 +48,7 @@ def calculate(pdim):
 
   #EMR Compute Instance
   if pdim.instanceHours:
-    #The EMR component in the calculation always uses OnDemand (Reserved it not supported yet for EMR)
+    #The EMR component in the calculation always uses OnDemand (Reserved it's not supported yet for EMR)
     computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[consts.SCRIPT_TERM_TYPE_ON_DEMAND], consts.PRODUCT_FAMILY_EMR_INSTANCE))]
     ts.start('tinyDbSearchComputeFile')
     #TODO: add support for Hunk Software Type

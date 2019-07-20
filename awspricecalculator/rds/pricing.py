@@ -1,7 +1,7 @@
 import os, sys
 import json
 import logging
-from ..common import consts, phelper
+from ..common import consts, phelper, utils
 from ..common.models import PricingResult
 import tinydb
 
@@ -184,7 +184,7 @@ def calculate(pdim):
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, instanceDb, qtyQuery, pdim.instanceCount, pricing_records, cost)
 
     if pdim.offeringType in (consts.SCRIPT_EC2_PURCHASE_OPTION_NO_UPFRONT, consts.SCRIPT_EC2_PURCHASE_OPTION_PARTIAL_UPFRONT):
-      reservedInstanceHours = pdim.instanceCount * consts.HOURS_IN_MONTH * 12 * pdim.years #TODO: move to common function
+      reservedInstanceHours = utils.calculate_instance_hours_year(pdim.instanceCount, pdim.years)
       pricing_records, cost = phelper.calculate_price(consts.SERVICE_RDS, instanceDb, hrsQuery, reservedInstanceHours, pricing_records, cost)
 
     log.debug("Time to search DB instance compute:[{}]".format(ts.finish('tinyDbSearchComputeFileReserved')))

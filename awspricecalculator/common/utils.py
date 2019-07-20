@@ -237,10 +237,10 @@ def compare(**kwargs):
 
       #TODO:populate price dimensions in PricingScenario instance
       pricingScenario = models.PricingScenario(i, r[1], {}, r[2], r[0], sortCriteria)
-      pricingScenario.deltaCheapest = delta_cheapest
-      pricingScenario.deltaPrevious = delta_last
-      pricingScenario.pctToCheapest = pct_to_cheapest
-      pricingScenario.pctToPrevious = pct_to_last
+      pricingScenario.deltaCheapest = round(delta_cheapest,2)
+      pricingScenario.deltaPrevious = round(delta_last,2)
+      pricingScenario.pctToCheapest = round(pct_to_cheapest,2)
+      pricingScenario.pctToPrevious = round(pct_to_last,2)
       pricingScenarios.append(pricingScenario.__dict__)
 
     i = i+1
@@ -281,7 +281,7 @@ def compare_term_types(service, **kwargs):
   termTypes = kwargs.get('termTypes',consts.SUPPORTED_TERM_TYPES)
   purchaseOptions = kwargs.get('purchaseOptions',consts.EC2_SUPPORTED_PURCHASE_OPTIONS)
   offeringClasses = kwargs.get('offeringClasses',consts.SUPPORTED_OFFERING_CLASSES_MAP.get(service,consts.SUPPORTED_EC2_OFFERING_CLASSES))
-  print("compare_term_types - offeringClasses:[{}]".format(offeringClasses))
+  log.info("compare_term_types - offeringClasses:[{}]".format(offeringClasses))
   for r in regions:
     kwargs['region'] = r
     for t in termTypes:
@@ -397,6 +397,7 @@ def get_index_file_name(service, name, format):
 """
 Common method to calculate instance hours in a year - at the time it ignores leap years
 """
+#TODO: remove circular dependency with models, so this method can be called from models too instead of duplicating it there
 def calculate_instance_hours_year(instanceCount, years):
   return 365 * 24 * int(instanceCount) * int(years)
 

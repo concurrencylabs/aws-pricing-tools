@@ -120,12 +120,15 @@ def main(argv):
         print("csvData:\n{}\n".format(termPricingAnalysis['csvData']))
         #print("tabularData:\n{}".format(tabularData).replace("reserved","rsv").replace("standard","std").
         #      replace("convertible","conv").replace("-upfront","").replace("partial","par").replace("demand","dmd"))
-        print("tabularData:\n{}".format(tabularData))
+        print("\n{}".format(tabularData))
 
       else:
         validate (kwargs)
         pricecomparisons = utils.compare(service=consts.SERVICE_EMR,**kwargs)
         print("Price comparisons:[{}]".format(json.dumps(pricecomparisons, indent=4)))
+        #tabularData = termPricingAnalysis.pop('tabularData')
+        #print("tabularData:\n{}".format(tabularData))
+
     else:
       validate (kwargs)
       emr_pricing = emrpricing.calculate(data.EmrPriceDimension(**kwargs))

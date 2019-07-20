@@ -223,7 +223,8 @@ times for Lambda.
 
 def remove_fields(service, row):
     EXCLUDE_FIELD_DICT = {
-          consts.SERVICE_EC2:['Location Type', 'Processor Features', 'serviceName', 'Network Performance',
+          consts.SERVICE_EC2:['Location Type', 'Storage', 'Location', 'Memory', 'Physical Processor',
+                              'Dedicated EBS Throughput', 'Processor Features', 'ECU', 'serviceName', 'Network Performance',
                               'Instance Family', 'Current Generation']
                   }
 
@@ -234,7 +235,7 @@ def remove_fields(service, row):
 
 
 
-
+#TODO: remove consolidated index.csv file after it has been split into smaller files
 
 
 
