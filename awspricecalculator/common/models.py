@@ -211,7 +211,7 @@ class RdsPriceDimension():
 
       self.instanceHours = int(kargs.get('instanceHours',0))
 
-      tmpmultiaz = kargs.get('multiAz','false').lower()
+      tmpmultiaz = str(kargs.get('multiAz','false')).lower()
       self.deploymentOption = ''
       if tmpmultiaz == 'true': self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_MULTI_AZ
       if tmpmultiaz == 'false': self.deploymentOption = consts.RDS_DEPLOYMENT_OPTION_SINGLE_AZ

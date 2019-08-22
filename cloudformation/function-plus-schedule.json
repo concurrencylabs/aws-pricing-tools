@@ -94,9 +94,9 @@
 		    "Role": { "Fn::GetAtt" : ["LambdaRealtimeCalculatePricingRole", "Arn"] },
 		    "Code": {
 		      "S3Bucket": { "Fn::Join" : [ "", ["concurrencylabs-deployment-artifacts-public-", { "Ref" : "AWS::Region" }] ] },
-		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v3.8.zip"
+		      "S3Key": "lambda-near-realtime-pricing/calculate-near-realtime-pricing-v3.9.zip"
 		    },
-		    "Runtime": "python2.7",
+		    "Runtime": "python3.6",
 		    "Timeout": "300",
 		    "MemorySize" : 1024
 		  }

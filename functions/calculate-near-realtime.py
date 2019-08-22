@@ -164,7 +164,7 @@ def handler(event, context):
                 log.info("Found registered EC2 instances to tagged ELBs [{}]:{}".format(taggedelbs, elb_instances.keys()))
                 elb_data_processed_gb = calculate_elb_data_processed(start, end, elb_instances)*calculate_forecast_factor() / (10**9)
             except Exception as failure:
-                log.error('Error calculating costs for tagged ELBs: %s', failure.message)
+                log.error('Error calculating costs for tagged ELBs: %s', failure)
         else:
           log.info("Didn't find any EC2 instances registered to tagged ELBs [{}]".format(taggedelbs))
         #else:
@@ -208,7 +208,7 @@ def handler(event, context):
                 if 'pricingRecords' in ec2_compute_cost: pricing_records.extend(ec2_compute_cost['pricingRecords'])
                 ec2Cost = ec2Cost + ec2_compute_cost['totalCost']
             except Exception as failure:
-                log.error('Error processing %s: %s', instance_type, failure.message)
+                log.error('Error processing %s: %s', instance_type, failure)
 
         #Get provisioned storage by volume type, and provisioned IOPS (if applicable)
         ebs_storage_dict, piops = get_storage_by_ebs_type(all_instance_dict)
@@ -222,7 +222,7 @@ def handler(event, context):
                 if 'pricingRecords' in ebs_storage_cost: pricing_records.extend(ebs_storage_cost['pricingRecords'])
                 ec2Cost = ec2Cost + ebs_storage_cost['totalCost']
             except Exception as failure:
-                log.error('Error processing ebs storage costs: %s', failure.message)
+                log.error('Error processing ebs storage costs: %s', failure)
 
 
         #Get tagged RDS DB instances
@@ -256,7 +256,7 @@ def handler(event, context):
                 if 'pricingRecords' in rds_instance_cost: pricing_records.extend(rds_instance_cost['pricingRecords'])
                 rdsCost = rdsCost + rds_instance_cost['totalCost']
             except Exception as failure:
-                log.error('Error processing RDS instance time costs: %s', failure.message)
+                log.error('Error processing RDS instance time costs: %s', failure)
 
         #Calculate RDS storage cost
         #TODO: add support for Aurora operations
@@ -275,7 +275,7 @@ def handler(event, context):
                 if 'pricingRecords' in rds_storage_cost: pricing_records.extend(rds_storage_cost['pricingRecords'])
                 rdsCost = rdsCost + rds_storage_cost['totalCost']
             except Exception as failure:
-                log.error('Error processing RDS storage costs: %s', failure.message)
+                log.error('Error processing RDS storage costs: %s', failure)
 
         #RDS Data Transfer - the Lambda function will assume all data transfer happens between RDS and EC2 instances
 
@@ -308,7 +308,7 @@ def handler(event, context):
                   lambdaCost = lambdaCost + lambda_func_cost['totalCost']
 
               except Exception as failure:
-                  log.error('Error processing Lambda costs: %s', failure.message)
+                  log.error('Error processing Lambda costs: %s', failure)
           else:
               log.info("Skipping pricing calculation for function [{}] - qualifier [{}] due to lack of executions in [{}-minute] time window".format(fullname, qualifier, METRIC_WINDOW))
 
@@ -380,12 +380,11 @@ def handler(event, context):
         log.info("Estimated monthly cost for resources tagged with key={},value={} : [{}]".format(tagkey, tagvalue, json.dumps(result,sort_keys=False,indent=4)))
 
     except NoDataFoundError as ndf:
-        print ("NoDataFoundError [{}]".format(ndf.message))
-
+        log.error ("NoDataFoundError [{}]".format(ndf))
 
     except Exception as e:
         traceback.print_exc()
-        print("Exception message:["+str(e.message)+"]")
+        log.error("Exception message:["+str(e)+"]")
 
 
     return result

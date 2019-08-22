@@ -15,7 +15,7 @@ service: aws-pricing # NOTE: update this with your service name
 
 provider:
   name: aws
-  runtime: python2.7
+  runtime: python3.6
 
   # you can add statements to the Lambda function's IAM Role here
   iamRoleStatements:
@@ -53,6 +53,8 @@ package:
     - pip-selfcheck.json
     - awspricecalculator/s3
     - awspricecalculator/data/ec2/index.*
+    - awspricecalculator/data/ec2/*Dedicated*    
+    - awspricecalculator/data/ec2/*Host*
     - awspricecalculator/data/ec2/*Reserved*
     - awspricecalculator/data/rds/index.*
     - awspricecalculator/data/rds/*Reserved*
