@@ -131,7 +131,7 @@ class Ec2PriceDimension():
       #TODO: add support for Network Load Balancer
 
       #TODO: Add support for dedicated tenancies
-      self.tenancy = consts.SCRIPT_EC2_TENANCY_SHARED
+      self.tenancy = kargs.get('tenancy',consts.SCRIPT_EC2_TENANCY_SHARED)
 
       self.validate()
 

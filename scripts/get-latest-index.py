@@ -79,6 +79,8 @@ def main(argv):
 
   extraArgs = {}
   if tenancy: extraArgs['tenancies']=[tenancy]
+  else: extraArgs['tenancies']=consts.EC2_TENANCY_MAP.keys()
+
 
   for s in services:
       if s != 'all':
@@ -222,10 +224,13 @@ times for Lambda.
 """
 
 def remove_fields(service, row):
+    #don't exclude: 'Product Family', 'operation' (used by ELB)
     EXCLUDE_FIELD_DICT = {
           consts.SERVICE_EC2:['Location Type', 'Storage', 'Location', 'Memory', 'Physical Processor',
                               'Dedicated EBS Throughput', 'Processor Features', 'ECU', 'serviceName', 'Network Performance',
-                              'Instance Family', 'Current Generation']
+                              'Instance Family', 'Current Generation',
+                              'serviceCode','TermType','Tenancy','OfferingClass','PurchaseOption' #these fields are implicit in the DB file name, therefore they're not necessary in the file itself
+                              ]
                   }
 
     for f in EXCLUDE_FIELD_DICT.get(service, []):

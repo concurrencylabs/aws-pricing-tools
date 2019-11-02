@@ -54,11 +54,14 @@ def calculate(pdim):
     #TODO: support all tenancy types (Host and Dedicated)
     #Compute Instance
     if pdim.instanceHours:
-      computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType], consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, consts.EC2_TENANCY_SHARED))]
+      dbFileKey = phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType],
+                                               consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, consts.EC2_TENANCY_MAP[pdim.tenancy]))
+      log.debug('DB File key: [{}]'.format(dbFileKey))
+      computeDb = dbs[dbFileKey]
       ts.start('tinyDbSearchComputeFile')
       query = ((priceQuery['Instance Type'] == pdim.instanceType) &
               (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
-              (priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &
+              #(priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) & #removed since it's redundant with the file name
               (priceQuery['Pre Installed S/W'] == pdim.preInstalledSoftware) &
               (priceQuery['CapacityStatus'] == consts.EC2_CAPACITY_RESERVATION_STATUS_MAP[pdim.capacityReservationStatus]) &
               (priceQuery['License Model'] == consts.EC2_LICENSE_MODEL_MAP[pdim.licenseModel]))# &
@@ -141,7 +144,6 @@ def calculate(pdim):
 
 
     #TODO: EIP
-    #TODO: Dedicated Host
     #TODO: NAT Gateway
     #TODO: Fee
 
@@ -153,7 +155,7 @@ def calculate(pdim):
     #Load all values for offeringClasses, tenancies and purchaseOptions
     #indexArgs = {'offeringClasses':consts.EC2_OFFERING_CLASS_MAP.values(),
     #             'tenancies':consts.EC2_TENANCY_MAP.values(), 'purchaseOptions':consts.EC2_PURCHASE_OPTION_MAP.values()}
-    tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType+pdim.offeringClass+pdim.tenancy+pdim.offeringType
+    tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType+pdim.offeringClass+consts.EC2_TENANCY_MAP[pdim.tenancy]+pdim.offeringType
     #tmpDbKey = consts.SERVICE_EC2+pdim.region+pdim.termType
     dbs = regiondbs.get(tmpDbKey,{})
     if not dbs:
@@ -169,16 +171,16 @@ def calculate(pdim):
 
     computeDb = dbs[phelper.create_file_key((consts.REGION_MAP[pdim.region], consts.TERM_TYPE_MAP[pdim.termType],
                                              consts.PRODUCT_FAMILY_COMPUTE_INSTANCE, pdim.offeringClass,
-                                             consts.EC2_TENANCY_SHARED, consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]))]
+                                             consts.EC2_TENANCY_MAP[pdim.tenancy], consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType]))]
 
     ts.start('tinyDbSearchComputeFileReserved')
     query = ((priceQuery['Instance Type'] == pdim.instanceType) &
             (priceQuery['Operating System'] == consts.EC2_OPERATING_SYSTEMS_MAP[pdim.operatingSystem]) &
-            (priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &
+            #(priceQuery['Tenancy'] == consts.EC2_TENANCY_SHARED) &   #removed since it's redundant with the DB file name
             (priceQuery['Pre Installed S/W'] == pdim.preInstalledSoftware) &
             (priceQuery['License Model'] == consts.EC2_LICENSE_MODEL_MAP[pdim.licenseModel]) &
-            (priceQuery['OfferingClass'] == consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]) &
-            (priceQuery['PurchaseOption'] == consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType] ) &
+            #(priceQuery['OfferingClass'] == consts.EC2_OFFERING_CLASS_MAP[pdim.offeringClass]) &
+            #(priceQuery['PurchaseOption'] == consts.EC2_PURCHASE_OPTION_MAP[pdim.offeringType] ) &
             (priceQuery['LeaseContractLength'] == consts.EC2_RESERVED_YEAR_MAP["{}".format(pdim.years)] ))
 
     hrsQuery = query & (priceQuery['Unit'] == 'Hrs' )

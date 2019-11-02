@@ -83,7 +83,7 @@ def calculate(pdim):
 
   #_/_/_/_/_/ RESERVED PRICING _/_/_/_/_/
 
-  print("regiondbs99[]".format(regiondbs))
+  print("regiondbs[]".format(regiondbs))
 
   #Load Reserved DBs
   if pdim.termType == consts.SCRIPT_TERM_TYPE_RESERVED:
