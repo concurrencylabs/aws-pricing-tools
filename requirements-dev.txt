@@ -1,5 +1,5 @@
 tinydb==3.4.1
-numpy== 1.12.1
+numpy== 1.21.0
 tabulate
 boto3
 python-lambda-local
